@@ -1,4 +1,4 @@
-// File: LoginScreen.tsx (VERSI FINAL TANPA BYPASS ADMIN)
+// File: LoginScreen.tsx (VERSI FINAL - MENGHILANGKAN PREFILL KREDENSIAL)
 
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext'; 
@@ -7,8 +7,8 @@ import { toast } from 'react-toastify';
 
 export const LoginScreen: React.FC = () => {
     const { login } = useAuth(); 
-    const [email, setEmail] = useState('joeuma892@gmail.com'); // Prefill untuk kemudahan
-    const [code, setCode] = useState('TAMUL-1526'); // Prefill untuk kemudahan
+    const [email, setEmail] = useState(''); // <-- DIUBAH MENJADI STRING KOSONG
+    const [code, setCode] = useState('');     // <-- DIUBAH MENJADI STRING KOSONG
     const [error, setError] = useState<string | null>(null);
     const [isLoggingIn, setIsLoggingIn] = useState(false);
 
@@ -95,7 +95,7 @@ export const LoginScreen: React.FC = () => {
                                 <input
                                     type="email"
                                     id="email"
-                                    value={email}
+                                    value={email} // Nilai default kini kosong
                                     onChange={(e) => setEmail(e.target.value)}
                                     placeholder="Email Address"
                                     className="w-full bg-gray-900 border border-gray-600 text-white rounded-lg px-4 py-3 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all duration-300"
@@ -108,7 +108,7 @@ export const LoginScreen: React.FC = () => {
                                 <input
                                     type="text"
                                     id="activation-code"
-                                    value={code}
+                                    value={code} // Nilai default kini kosong
                                     onChange={(e) => setCode(e.target.value)}
                                     placeholder="Activation Code"
                                     className="w-full bg-gray-900 border border-gray-600 text-white rounded-lg px-4 py-3 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all duration-300"
