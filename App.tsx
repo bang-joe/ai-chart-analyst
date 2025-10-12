@@ -1,7 +1,8 @@
+// File: App.tsx (VERSI FINAL YANG SUDAH DIPERBAIKI)
 import 'react-toastify/dist/ReactToastify.css';
 import { ToastContainer, toast } from 'react-toastify';
 
-import React, { useState, useEffect, useCallback, createContext, useContext } from "react"; 
+import React, { useState, useEffect, useCallback, createContext, useContext } from "react";
 import { useAuth } from "./context/AuthContext";
 import { LoginScreen } from "./components/LoginScreen";
 import { Header } from "./components/Header";
@@ -12,11 +13,9 @@ import { LS_KEYS } from "./types";
 import { Footer } from "./components/Footer";
 import AdminPanel from "./components/AdminPanel";
 import { motion } from "framer-motion";
+import AnalysisResult from './components/AnalysisResult'; // Pastikan komponen ini ada
 
-// --- PENTING: IMPORT FUNGSI analyzeChart DARI FOLDER SERVICES ---
-import { analyzeChart as callServerAnalyzeChart } from "./services/analyzeChart";
-// --- AKHIR IMPORT ---
-
+// --- IMPORT YANG BERMASALAH SUDAH DIHAPUS ---
 
 type Theme = 'dark' | 'light';
 
@@ -53,7 +52,7 @@ const parseAnalysisText = (text: string, currentRiskProfile: "Low" | "Medium"): 
     const recText = recMatch ? recMatch[1] : "";
 
     const actionMatch = recText.match(/\bAksi\s*:\s*(Buy|Sell)/i);
-    const entryMatch = recText.match(/\bEntry\s*:\s*([\d.,-]+)/i); 
+    const entryMatch = recText.match(/\bEntry\s*:\s*([\d.,-]+)/i);
     const reasonMatch = recText.match(/\bRasional Entry\b\s*:\s*(.*)/i);
     const slMatch = recText.match(/\bStop Loss\s*:\s*([\d.,-]+)/i);
     const tp1 = recText.match(/\bTake Profit 1\s*:\s*([\d.,-]+)/i);
@@ -74,9 +73,9 @@ const parseAnalysisText = (text: string, currentRiskProfile: "Low" | "Medium"): 
       indicators: extractAndClean(indMatch),
       explanation: extractAndClean(expMatch),
       recommendation: {
-        action: extractAndClean(actionMatch),
-        entry: entryMatch[1].trim(), 
-        entryRationale: extractAndClean(reasonMatch) === "N/A" ? "" : extractAndClean(reasonMatch), 
+        action: extractAndClean(actionMatch) as 'Buy' | 'Sell',
+        entry: entryMatch[1].trim(),
+        entryRationale: extractAndClean(reasonMatch) === "N/A" ? "" : extractAndClean(reasonMatch),
         stopLoss: slMatch[1].trim(),
         takeProfit: tps,
         riskProfile: currentRiskProfile,
@@ -90,12 +89,12 @@ const parseAnalysisText = (text: string, currentRiskProfile: "Low" | "Medium"): 
 
 // 🧠 Main Application Component
 const MainApp: React.FC = () => {
-  const themeContext = useTheme(); 
-  
+  const themeContext = useTheme();
+
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [mimeType, setMimeType] = useState<string>("");
-  const [pair, setPair] = useState("");
-  const [timeframe, setTimeframe] = useState("");
+  const [pair, setPair] = useState("XAUUSD");
+  const [timeframe, setTimeframe] = useState("H1");
   const [risk, setRisk] = useState<"Low" | "Medium">("Medium");
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -104,10 +103,10 @@ const MainApp: React.FC = () => {
 
   const { user } = useAuth();
   const [showAdmin, setShowAdmin] = useState(false);
-  
-  const theme = themeContext.theme; 
+
+  const theme = themeContext.theme;
   const toggleTheme = themeContext.toggleTheme;
-  
+
   // 📁 Handle Upload Image
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -123,29 +122,45 @@ const MainApp: React.FC = () => {
     reader.readAsDataURL(f);
   };
 
-  // ⚙️ Handle AI Analysis
+  // ⚙️ Handle AI Analysis (VERSI BARU YANG DIPERBAIKI)
   const handleAnalyze = useCallback(async () => {
     if (!imageBase64 || !pair || !timeframe) {
       setError("Please upload an image and complete all fields.");
       return;
     }
-    
+
     setError(null);
     setIsLoading(true);
 
     try {
-      // PANGGIL FUNGSI analyzeChart DARI SERVER
-      const rawText = await callServerAnalyzeChart(imageBase64, mimeType, pair, timeframe, risk);
+      // PANGGIL LANGSUNG KE API VERCEL
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64, mimeType, pair, timeframe, risk }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Server error: Gagal mendapatkan analisa.');
+      }
+      
+      const rawText = data.text;
+      if (!rawText) {
+        throw new Error("Server mengembalikan data kosong.");
+      }
       
       toast.success("Analisis AI Selesai!", { position: "bottom-right" });
-      
+
       const parsed = parseAnalysisText(rawText, risk);
       setAnalysis(parsed);
-      
+
     } catch (err) {
       console.error(err);
-      toast.error(err instanceof Error ? err.message : "Unknown error.");
-      setError(err instanceof Error ? err.message : "Unknown error.");
+      const errorMessage = err instanceof Error ? err.message : "Unknown error occurred.";
+      toast.error(errorMessage);
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -154,7 +169,7 @@ const MainApp: React.FC = () => {
   return (
     <div className={`min-h-screen bg-gray-900 text-gray-200 p-4 sm:p-6 lg:p-8 ${theme === 'light' ? 'light-mode-specific-styles' : ''}`}>
       <div className="max-w-7xl mx-auto">
-        <Header theme={theme} toggleTheme={toggleTheme} /> 
+        <Header theme={theme} toggleTheme={toggleTheme} />
 
         {user?.isAdmin && (
           <div className="mt-4 flex justify-end">
@@ -241,7 +256,7 @@ const MainApp: React.FC = () => {
                     <div className="text-red-400 bg-red-900/40 p-4 rounded-lg text-center shadow-md">{error}</div>
                   )}
                   {/* Asumsikan AnalysisResult di-import */}
-                  {!isLoading && !error && analysis && <AnalysisResult analysis={analysis} />} 
+                  {!isLoading && !error && analysis && <AnalysisResult analysis={analysis} />}
                   {!isLoading && !error && !analysis && (
                     <p className="text-gray-400">Upload chart dan klik "Analyze Chart" untuk memulai analisis AI.</p>
                   )}
@@ -285,16 +300,16 @@ const App: React.FC = () => {
     localStorage.setItem('theme', theme);
   }, [theme]);
   // --- AKHIR THEME LOGIC UTAMA ---
-  
+
   const { user, loading } = useAuth();
   if (loading) return <FullScreenLoader />;
-  
+
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}> {/* WRAP DENGAN PROVIDER */}
       <>
         {/* Tambahkan kelas tema ke elemen utama atau gunakan style di CSS global */}
-        {user ? <MainApp /> : <LoginScreen />} 
-        <ToastContainer position="top-right" autoClose={3000} /> 
+        {user ? <MainApp /> : <LoginScreen />}
+        <ToastContainer position="top-right" autoClose={3000} />
       </>
     </ThemeContext.Provider>
   );
