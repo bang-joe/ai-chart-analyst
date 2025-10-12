@@ -1,4 +1,4 @@
-// File: App.tsx (FINAL FIX - AKTIVASI ADMIN PANEL DI ROOT)
+// File: App.tsx (FINAL FIX + PENAMBAHAN ADMIN PANEL TANPA UBAH STRUKTUR)
 
 import 'react-toastify/dist/ReactToastify.css';
 import { ToastContainer, toast } from 'react-toastify';
@@ -11,13 +11,11 @@ import { ImageUploader } from "./components/ImageUploader";
 import { Loader } from "./components/Loader";
 import type { Analysis } from "./types";
 import { Footer } from "./components/Footer";
-import AdminPanel from "./components/AdminPanel"; // <-- IMPORT ADMIN PANEL
+import AdminPanel from "./components/AdminPanel"; // ✅ Admin Panel tetap dipakai
 import { motion } from "framer-motion";
 import { AnalysisResult } from './components/AnalysisResult';
 
-// HAPUS SEMUA DEFINISI DAN CONTEXT TEMA
-
-// 🧩 Parsing hasil analisis AI (Tidak diubah)
+// 🧩 Parsing hasil analisis AI
 const parseAnalysisText = (text: string, currentRiskProfile: "Low" | "Medium"): Analysis | null => {
   try {
     const extractAndClean = (matchResult: RegExpMatchArray | null, fallback: string = "N/A") => {
@@ -72,8 +70,6 @@ const parseAnalysisText = (text: string, currentRiskProfile: "Low" | "Medium"): 
 
 // 🧠 Main Application Component
 const MainApp: React.FC = () => {
-  // FINAL FIX: Hapus semua penggunaan useTheme()
-  
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [mimeType, setMimeType] = useState<string>("");
   const [pair, setPair] = useState(""); 
@@ -85,10 +81,7 @@ const MainApp: React.FC = () => {
   const [preview, setPreview] = useState<string | null>(null);
 
   const { user } = useAuth();
-  
-  // HAPUS LOGIC showAdmin
-  
-  // 📁 Handle Upload Image (sama)
+
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
@@ -103,7 +96,6 @@ const MainApp: React.FC = () => {
     reader.readAsDataURL(f);
   };
 
-  // ⚙️ Handle AI Analysis (sama)
   const handleAnalyze = useCallback(async () => {
     if (!imageBase64 || !pair || !timeframe) {
       setError("Please upload an image and complete all fields.");
@@ -114,7 +106,6 @@ const MainApp: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // PANGGIL LANGSUNG KE API VERCEL
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -122,23 +113,15 @@ const MainApp: React.FC = () => {
       });
 
       const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Server error: Gagal mendapatkan analisa.');
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Server error: Gagal mendapatkan analisa.');
-      }
-      
       const rawText = data.text;
-      if (!rawText) {
-        throw new Error("Server mengembalikan data kosong.");
-      }
-      
-      toast.success("Analisis AI Selesai!", { position: "bottom-right" });
+      if (!rawText) throw new Error("Server mengembalikan data kosong.");
 
+      toast.success("Analisis AI Selesai!", { position: "bottom-right" });
       const parsed = parseAnalysisText(rawText, risk);
       setAnalysis(parsed);
-
     } catch (err) {
-      console.error(err);
       const errorMessage = err instanceof Error ? err.message : "Unknown error occurred.";
       toast.error(errorMessage);
       setError(errorMessage);
@@ -147,16 +130,13 @@ const MainApp: React.FC = () => {
     }
   }, [imageBase64, mimeType, pair, timeframe, risk]);
 
-  // FINAL RENDER LOGIC
   return (
-    // FIX STYLING: Gunakan styling dark default
     <div className={`min-h-screen bg-gray-900 text-gray-200 p-4 sm:p-6 lg:p-8`}>
       <div className="max-w-7xl mx-auto">
-        <Header /> {/* Header tanpa props tema */}
-
+        <Header />
         <main className="mt-8">
-          {/* Tampilan Analisis Chart */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-fade-in-up">
+            {/* LEFT */}
             <div className="bg-gray-800/50 p-6 rounded-2xl shadow-lg border border-gray-700 backdrop-blur-sm">
               <h2 className="text-2xl font-bold text-white mb-6">1. Upload & Configure</h2>
               <ImageUploader previewUrl={preview} onChange={handleFile} />
@@ -222,10 +202,11 @@ const MainApp: React.FC = () => {
                 {error && (
                   <div className="text-red-400 bg-red-900/40 p-4 rounded-lg text-center shadow-md">{error}</div>
                 )}
-                {/* Asumsikan AnalysisResult di-import */}
                 {!isLoading && !error && analysis && <AnalysisResult analysis={analysis} />}
                 {!isLoading && !error && !analysis && (
-                  <p className="text-gray-400">Upload chart dan klik "Analyze Chart" untuk memulai analisis AI.</p>
+                  <p className="text-gray-400">
+                    Upload chart dan klik "Analyze Chart" untuk memulai analisis AI.
+                  </p>
                 )}
               </div>
             </div>
@@ -238,7 +219,7 @@ const MainApp: React.FC = () => {
   );
 };
 
-// ⚙️ Loader layar penuh (sama)
+// 🌀 Loader layar penuh
 const FullScreenLoader: React.FC = () => (
   <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center">
     <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-amber-400"></div>
@@ -246,20 +227,25 @@ const FullScreenLoader: React.FC = () => (
   </div>
 );
 
-// ⚙️ Wrapper utama (cek login)
+// 🧱 Root App Wrapper
 const App: React.FC = () => {
   const { user, loading } = useAuth();
+
   if (loading) return <FullScreenLoader />;
-  
-  // LOGIC FINAL: Jika admin, tampilkan Admin Panel. Jika tidak, tampilkan MainApp.
-  if (user?.isAdmin) {
-    // FINAL FIX: Tampilkan AdminPanel jika user adalah admin
+
+  // ✅ Tambahan: Admin bisa buka panel & kembali ke main app
+  const [showMainApp, setShowMainApp] = useState(false);
+
+  if (user?.isAdmin && !showMainApp) {
     return (
-      <AdminPanel onClose={() => { /* Tambahkan logic refresh jika perlu */ }} />
+      <AdminPanel
+        onClose={() => {
+          setShowMainApp(true);
+        }}
+      />
     );
   }
 
-  // Tampilkan MainApp untuk user non-admin dan LoginScreen untuk user logout
   return (
     <>
       {user ? <MainApp /> : <LoginScreen />}

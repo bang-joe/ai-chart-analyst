@@ -1,17 +1,16 @@
-// File: components/AdminPanel.tsx (VERSI BARU DENGAN MESIN SUPABASE)
+// File: components/AdminPanel.tsx (FINAL FIX - DENGAN TOMBOL KEMBALI)
 
 import React, { useState, useEffect, useCallback } from "react";
 import { createClient } from '@supabase/supabase-js';
 import { motion } from "framer-motion";
 import { toast } from 'react-toastify';
 
-// Interface User (pastikan ini sama dengan yang di AuthContext)
 interface User {
-  id: number; // Supabase menggunakan 'id' (number) sebagai primary key
+  id: number;
   uid: string;
   name: string;
   email: string;
-  activation_code: string; // Sesuaikan dengan nama kolom di Supabase
+  activation_code: string;
   is_admin: boolean;
   is_active: boolean;
   membership_type: string;
@@ -26,13 +25,10 @@ interface AdminPanelProps {
   onClose: () => void;
 }
 
-// Buat koneksi ke Supabase HANYA di sini. Kunci diambil dari Environment Variables
-// PENTING: Gunakan VITE_... karena ini komponen frontend
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL!,
   import.meta.env.VITE_SUPABASE_ANON_KEY!
 );
-
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const [users, setUsers] = useState<User[]>([]);
@@ -45,16 +41,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     plan_type: "ADMIN",
     is_admin: true,
     is_active: true,
-    uid: crypto.randomUUID(), // Buat UID acak sederhana
+    uid: crypto.randomUUID(),
     join_date: new Date().toISOString(),
     membership_expires_at: null,
   });
 
-  // 🔁 Ambil data users dari Supabase
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     const { data, error } = await supabase
-      .from('members') // Nama tabel kita
+      .from('members')
       .select('*')
       .order('created_at', { ascending: false });
 
@@ -71,34 +66,33 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     fetchUsers();
   }, [fetchUsers]);
 
-  // ➕ Tambah user baru
   const handleAddUser = async () => {
     if (!newUser.name || !newUser.email || !newUser.activation_code) {
       toast.warn("⚠️ Nama, Email, dan Kode wajib diisi!");
       return;
     }
 
-    const { error } = await supabase.from('members').insert([
-      {
-        ...newUser,
-      },
-    ]);
-
+    const { error } = await supabase.from('members').insert([{ ...newUser }]);
     if (error) {
       toast.error("❌ Gagal menambahkan user: " + error.message);
     } else {
       toast.success("✅ User berhasil ditambahkan!");
-      setNewUser({ // Reset form
-        name: "", email: "", activation_code: "",
-        membership_type: "Lifetime Access", plan_type: "ADMIN",
-        is_admin: true, is_active: true, uid: crypto.randomUUID(),
-        join_date: new Date().toISOString(), membership_expires_at: null,
+      setNewUser({
+        name: "",
+        email: "",
+        activation_code: "",
+        membership_type: "Lifetime Access",
+        plan_type: "ADMIN",
+        is_admin: true,
+        is_active: true,
+        uid: crypto.randomUUID(),
+        join_date: new Date().toISOString(),
+        membership_expires_at: null,
       });
-      fetchUsers(); // Muat ulang data
+      fetchUsers();
     }
   };
 
-  // ❌ Hapus user
   const handleDeleteUser = async (id: number) => {
     if (!confirm("Yakin ingin menghapus user ini? Aksi ini tidak bisa dibatalkan.")) return;
     const { error } = await supabase.from('members').delete().eq('id', id);
@@ -110,7 +104,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     }
   };
 
-  // 🔄 Toggle Admin / Active
   const handleToggleField = async (
     id: number,
     field: "is_admin" | "is_active",
@@ -128,9 +121,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
       fetchUsers();
     }
   };
-  
-  // (UI JSX Tetap sama seperti sebelumnya, hanya logikanya yang diubah)
-  // ... (sisanya sama, copy paste JSX dari file AdminPanel-mu yang lama ke sini)
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -139,18 +130,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
       className="fixed inset-0 bg-black/70 backdrop-blur-md flex justify-center items-center z-50 p-4"
     >
       <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-6xl shadow-lg relative text-gray-200">
+
+        {/* ✳️ Tombol Close Panel */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-white text-2xl font-bold"
+          className="absolute top-4 right-4 text-gray-300 hover:text-white text-xl font-bold bg-gray-800/80 px-3 py-1 rounded-lg"
         >
-          ×
+          ← Back to App
         </button>
 
-        <h2 className="text-2xl font-bold mb-6 text-white">
+        <h2 className="text-2xl font-bold mb-6 text-white text-center">
           Admin Panel – User Management (Supabase)
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* ADD USER */}
           <div className="bg-gray-800/50 rounded-xl p-5 border border-gray-700">
             <h3 className="text-lg font-semibold mb-4 text-amber-400">
               Add New User
@@ -184,6 +178,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
             </button>
           </div>
 
+          {/* USER LIST */}
           <div className="bg-gray-800/50 rounded-xl p-5 border border-gray-700">
             <h3 className="text-lg font-semibold mb-4 text-amber-400">
               Existing Users ({users.length})

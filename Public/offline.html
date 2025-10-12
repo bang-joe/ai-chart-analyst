@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Offline - TradersXauusd Chart Analyst</title>
+
+    <meta name="theme-color" content="#FFD700" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <!-- ✅ Tailwind CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+      body {
+        background-color: #000;
+        color: #fff;
+        font-family: "Inter", sans-serif;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        text-align: center;
+        margin: 0;
+      }
+
+      h1 {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #ffd700;
+        margin-bottom: 0.5rem;
+      }
+
+      p {
+        font-size: 1rem;
+        opacity: 0.8;
+        margin-bottom: 1rem;
+      }
+
+      button {
+        background-color: #ffd700;
+        color: #000;
+        font-weight: 600;
+        padding: 0.6rem 1.2rem;
+        border-radius: 6px;
+        border: none;
+        cursor: pointer;
+        transition: background-color 0.2s ease-in-out;
+      }
+
+      button:hover {
+        background-color: #e0c200;
+      }
+
+      img {
+        width: 90px;
+        height: 90px;
+        margin-bottom: 1rem;
+      }
+    </style>
+  </head>
+
+  <body>
+    <img src="/icon-192.png" alt="TradersXauusd Logo" />
+    <h1>Koneksi Hilang</h1>
+    <p>Sepertinya kamu sedang offline.<br />Periksa koneksi internetmu dan coba lagi.</p>
+    <button onclick="window.location.reload()">Coba Lagi</button>
+  </body>
+</html>

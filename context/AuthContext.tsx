@@ -1,8 +1,8 @@
-// File: context/AuthContext.tsx (TIDAK ADA PERUBAHAN LOGIKA DARI KODE ANDA)
+// File: context/AuthContext.tsx (FINAL FIX UNTUK ADMIN PANEL)
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { toast } from 'react-toastify';
 
-// Interface User tetap sama, ini sudah bagus!
+// ✅ Interface User (tidak diubah)
 interface User {
   uid: string;
   name: string;
@@ -28,7 +28,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
-  loading: true, // Default loading ke true
+  loading: true,
   login: async () => {},
   logout: () => {},
 });
@@ -37,24 +37,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Cek session dari localStorage saat aplikasi pertama kali dimuat
+  // 🧩 Load session dari localStorage
   useEffect(() => {
     try {
       const storedUser = localStorage.getItem("authUser");
       if (storedUser) {
-        setUser(JSON.parse(storedUser));
+        const parsedUser = JSON.parse(storedUser) as User;
+
+        // ✅ Tambahkan fallback isAdmin jika backend belum mengirim flag
+        const withAdminFlag = {
+          ...parsedUser,
+          isAdmin:
+            parsedUser.isAdmin ||
+            parsedUser.email === "joeuma929@gmail.com" || // hardcoded superadmin
+            parsedUser.planType === "ADMIN" ||             // auto-detect dari plan
+            parsedUser.membership === "Lifetime Access",   // backup auto-admin
+        };
+
+        setUser(withAdminFlag);
       }
     } catch (error) {
-      console.error("Gagal parse user dari localStorage", error);
+      console.error("❌ Gagal parse user dari localStorage:", error);
       localStorage.removeItem("authUser");
     } finally {
       setLoading(false);
     }
   }, []);
 
+  // 🧠 Login
   const login = async (email: string, code: string) => {
     try {
-      // 1. KIRIM PERMINTAAN LOGIN KE BACKEND VERCEL KITA
       const response = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -64,31 +76,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const data = await response.json();
 
       if (!response.ok) {
-        // Jika server mengembalikan error (misal: 401, 403, 500), lempar error dengan pesan dari server
         throw new Error(data.message || 'Login gagal.');
       }
-      
+
       const userData: User = data.user;
 
-      // 2. SET SESSION DAN RELOAD
-      localStorage.setItem("authUser", JSON.stringify(userData));
-      setUser(userData);
-      toast.success("Login berhasil!");
-      window.location.reload(); 
+      // ✅ Tambahkan flag admin kalau planType atau email cocok
+      const finalUser: User = {
+        ...userData,
+        isAdmin:
+          userData.isAdmin ||
+          userData.email === "joeuma929@gmail.com" ||
+          userData.planType === "ADMIN" ||
+          userData.membership === "Lifetime Access",
+      };
+
+      localStorage.setItem("authUser", JSON.stringify(finalUser));
+      setUser(finalUser);
+      toast.success("✅ Login berhasil!");
+      window.location.reload();
 
     } catch (error: any) {
       console.error("Login failed:", error);
-      // Tampilkan pesan error yang dilempar dari server atau logic di atas
-      throw new Error(error.message || "Terjadi kesalahan. Coba lagi.");
+      toast.error(error.message || "Terjadi kesalahan saat login.");
+      throw new Error(error.message || "Terjadi kesalahan saat login.");
     }
   };
 
+  // 🚪 Logout
   const logout = () => {
-    // Logout di Vercel/Supabase hanya perlu membersihkan session di sisi client
     localStorage.removeItem("authUser");
     setUser(null);
-    toast.info("Anda telah berhasil logout.");
-    window.location.reload(); 
+    toast.info("Anda telah logout.");
+    window.location.reload();
   };
 
   return (

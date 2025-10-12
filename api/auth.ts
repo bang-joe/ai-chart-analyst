@@ -1,13 +1,29 @@
-// File: api/auth.ts (VERSI FINAL - FIX TYPESCRIPT)
-
+// File: api/auth.ts (FINAL PRODUCTION READY)
 import { createClient } from '@supabase/supabase-js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-// PERBAIKAN UTAMA: Menggunakan SUPABASE_SERVICE_ROLE_KEY untuk akses database yang aman.
+// ⚙️ Buat koneksi Supabase menggunakan Service Role Key (AMAN untuk backend)
 const supabase = createClient(
   process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY! 
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
+
+// ✅ Tipe data User sesuai tabel Supabase
+interface Member {
+  id: number;
+  uid?: string;
+  name: string;
+  email: string;
+  activation_code: string;
+  is_admin: boolean;
+  is_active: boolean;
+  membership_type: string;
+  plan_type: string;
+  join_date: string;
+  membership_expires_at: string | null;
+  last_login?: string;
+  picture_url?: string;
+}
 
 export default async function handler(
   request: VercelRequest,
@@ -17,8 +33,8 @@ export default async function handler(
     return response.status(405).json({ message: 'Method Not Allowed' });
   }
 
-  // Bersihkan input dari spasi yang tidak perlu
-  const email = (request.body.email || '').trim();
+  // ✳️ Bersihkan input
+  const email = (request.body.email || '').trim().toLowerCase();
   const activationCode = (request.body.activationCode || '').trim();
 
   if (!email || !activationCode) {
@@ -26,19 +42,18 @@ export default async function handler(
   }
 
   try {
-    // 1. Query Data Pengguna
+    // 1️⃣ Cari user berdasarkan email
     const { data: user, error } = await supabase
       .from('members')
       .select('*')
-      .eq('email', email) // Query dengan email yang sudah bersih
+      .eq('email', email)
       .single();
 
     if (error || !user) {
-      // Jika error, cek log Supabase/Vercel. User hanya melihat pesan umum.
       throw new Error("Email atau Kode Aktivasi salah.");
     }
 
-    // 2. Periksa kode aktivasi dan status
+    // 2️⃣ Validasi kode dan status aktif
     if (user.activation_code !== activationCode) {
       throw new Error("Email atau Kode Aktivasi salah.");
     }
@@ -47,26 +62,49 @@ export default async function handler(
       throw new Error("Akun belum aktif. Hubungi admin.");
     }
 
-    // 3. Periksa masa aktif (jika ada kolomnya)
+    // 3️⃣ Cek masa aktif
     if (user.membership_expires_at && new Date(user.membership_expires_at) < new Date()) {
       throw new Error("Masa aktif akun telah habis.");
     }
 
-    // 4. Update last_login
+    // 4️⃣ Update last_login di database
     await supabase
       .from('members')
       .update({ last_login: new Date().toISOString() })
       .eq('id', user.id);
-    
-    // 5. Kirim data pengguna kembali
-    return response.status(200).json({ message: 'Login berhasil!', user });
 
-  } catch (error: any) { // <-- PERBAIKAN TS
-    // Tambahkan log di server untuk debugging
+    // 5️⃣ Siapkan response aman untuk frontend
+    const safeUser = {
+      uid: user.uid || user.id.toString(),
+      name: user.name || '',
+      email: user.email,
+      code: user.activation_code,
+      isAdmin:
+        user.is_admin ||
+        user.email === "joeuma929@gmail.com" || // fallback superadmin
+        user.plan_type === "ADMIN",
+      isActive: user.is_active,
+      membership: user.membership_type,
+      planType: user.plan_type,
+      joinDate: user.join_date,
+      expDate: user.membership_expires_at,
+      lastLogin: user.last_login || null,
+      picture: user.picture_url || null,
+    };
+
+    // ✅ Berhasil login
+    return response.status(200).json({ message: 'Login berhasil!', user: safeUser });
+
+  } catch (error: any) {
     console.error('[API AUTH ERROR]:', error.message || error);
-    
-    // Kembalikan error yang lebih umum jika ini adalah error server internal (500)
-    const errorMessage = error.message.includes('A server error') ? 'Gagal terhubung ke server. Coba lagi.' : error.message;
-    return response.status(401).json({ message: errorMessage || 'Otentikasi gagal.' });
+
+    const errorMessage =
+      error.message?.includes('A server error') || error.message?.includes('fetch')
+        ? 'Gagal terhubung ke server. Coba lagi.'
+        : error.message;
+
+    return response.status(401).json({
+      message: errorMessage || 'Otentikasi gagal.',
+    });
   }
 }
