@@ -1,7 +1,7 @@
 {
   "name": "TradersXauusd Chart Analyst",
-  "short_name": "Ai Chart Analyst",
-  "description": "Platform Ai Chart Analyst harian untuk trader.",
+  "short_name": "AI Chart Analyst",
+  "description": "AI Chart Analyst by Tradersxauusd — platform analisa chart emas otomatis dan edukasi trading profesional.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#000000",
@@ -23,6 +23,16 @@
       "sizes": "180x180",
       "type": "image/png",
       "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon-16x16.png",
+      "sizes": "16x16",
+      "type": "image/png"
     }
   ]
 }
