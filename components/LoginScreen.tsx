@@ -1,3 +1,5 @@
+// File: LoginScreen.tsx (VERSI FINAL TANPA BYPASS ADMIN)
+
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext'; 
 import { Logo } from './Logo';
@@ -5,15 +7,11 @@ import { toast } from 'react-toastify';
 
 export const LoginScreen: React.FC = () => {
     const { login } = useAuth(); 
-    const [email, setEmail] = useState('');
-    const [code, setCode] = useState('');
+    const [email, setEmail] = useState('joeuma892@gmail.com'); // Prefill untuk kemudahan
+    const [code, setCode] = useState('TAMUL-1526'); // Prefill untuk kemudahan
     const [error, setError] = useState<string | null>(null);
     const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-    // --- KONFIGURASI BYPASS ADMIN SEMENTARA ---
-    const ADMIN_EMAIL = "admin@tradersxauusd.com"; // Email yang Anda gunakan untuk Bypass
-    const ADMIN_BYPASS_KEY = "SUPER-ADMIN-2025-XAUUSD"; // GANTI dengan kunci rahasia unik!
-    
     // --- KONFIGURASI TELEGRAM ADMIN FINAL ---
     const ADMIN_TELEGRAM_USERNAME = 'TradersXauUsd';
     const TELEGRAM_MESSAGE = encodeURIComponent(
@@ -34,36 +32,9 @@ export const LoginScreen: React.FC = () => {
         }
         setError(null);
         setIsLoggingIn(true);
-
-        // --- BYPASS ADMIN SEMENTARA (Langkah Keamanan Tinggi) ---
-        if (email.toLowerCase() === ADMIN_EMAIL && code === ADMIN_BYPASS_KEY) {
-            console.log("BYPASS: Admin access granted via secret key.");
-            setIsLoggingIn(false);
-            setError(null);
-            
-            // Simpan sesi admin palsu ke Local Storage agar AuthContext mengira user sudah login
-            const mockAdminUser = {
-                uid: "BYPASS_ADMIN_UID_001", // UID palsu
-                name: "Admin Bypass", 
-                email: ADMIN_EMAIL, 
-                code: ADMIN_BYPASS_KEY,
-                isAdmin: true, 
-                isActive: true,
-                membership: "Lifetime Access",
-                planType: "ADMIN",
-                joinDate: new Date().toISOString(),
-                expDate: null,
-            };
-            localStorage.setItem("authUser", JSON.stringify(mockAdminUser));
-            
-            toast.success("Bypass Login Admin Berhasil!", { position: "top-right" });
-            window.location.reload(); 
-            return; // Hentikan fungsi agar tidak memanggil Firebase Auth
-        }
-        // --- AKHIR BYPASS ADMIN ---
         
         try {
-            // Lanjutkan dengan Panggilan Firebase Auth standar (untuk pengguna non-admin)
+            // Lanjutkan dengan Panggilan Auth standar
             await login(email, code); 
             
             toast.success("Login berhasil! Selamat datang di AI Chart Analyst.", {
@@ -74,11 +45,7 @@ export const LoginScreen: React.FC = () => {
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred. Please try again.';
             
-            // Jika Anda mencoba Bypass tetapi menggunakan kredensial Firebase lama
-            if (!errorMessage.includes("Bypass")) {
-                 toast.error(errorMessage);
-            }
-            
+            toast.error(errorMessage);
             setError(errorMessage);
         } finally {
              setIsLoggingIn(false);
