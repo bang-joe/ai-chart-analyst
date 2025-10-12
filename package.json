@@ -5,23 +5,16 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview",
-    "start": "node server.js"
+    "preview": "vite preview"
   },
   "dependencies": {
-    "@google/genai": "^1.17.0",
     "@google/generative-ai": "^0.24.1",
+    "@supabase/supabase-js": "^2.42.0",
     "@vercel/node": "^5.3.26",
     "axios": "^1.12.2",
-    "cors": "^2.8.5",
     "date-fns": "^4.1.0",
     "dotenv": "^17.2.3",
-    "express": "^5.1.0",
-    "firebase": "^12.3.0",
-    "firebase-functions": "^6.5.0",
     "framer-motion": "^12.23.22",
-    "google-auth-library": "^10.4.0",
-    "node-fetch": "^3.3.2",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-ga4": "^2.1.0",

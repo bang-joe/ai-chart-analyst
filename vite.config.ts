@@ -1,3 +1,4 @@
+// File: vite.config.ts (VERSI BARU UNTUK VERCEL)
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
@@ -14,15 +15,9 @@ export default defineConfig({
   server: {
     port: 5173,
     open: true,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:3000',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
-      },
-    },
+    // Kita hapus bagian proxy di sini! Vercel menanganinya secara otomatis.
   },
-  base: './',
+  // Kita hapus 'base' agar routing di Vercel sempurna.
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './'),
