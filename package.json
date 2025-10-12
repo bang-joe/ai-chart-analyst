@@ -2,7 +2,7 @@
   "name": "ai-chart-analyst-by-tradersxauusd",
   "private": true,
   "version": "0.1.0",
-  "type": "module",  <-- PERBAIKAN KRUSIAL DI SINI
+  "type": "module",  <-- KOMA DITAMBAHKAN DI SINI
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
