@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Chart Analyst by Tradersxauusd</title>
+
+    <!-- ICONS -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+
+    <!-- PWA CONFIG -->
+    <meta name="description" content="AI Chart Analyst by Tradersxauusd — platform analisa chart emas otomatis dan edukasi trading profesional." />
+    <meta name="theme-color" content="#FFD700" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="TradersXauusd" />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Auto-Update Service Worker + Cache Cleanup -->
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker
+            .getRegistrations()
+            .then((regs) => regs.forEach((r) => r.unregister()))
+            .then(() =>
+              navigator.serviceWorker
+                .register("/service-worker.js")
+                .then(() => console.log("✅ Service Worker registered"))
+                .catch((err) =>
+                  console.error("❌ Service Worker registration failed:", err)
+                )
+            );
+        });
+      }
+
+      // Force refresh when a new service worker version is available
+      if (navigator.serviceWorker) {
+        navigator.serviceWorker.addEventListener("controllerchange", () => {
+          window.location.reload();
+        });
+      }
+    </script>
+
+    <style>
+      @media (prefers-color-scheme: dark) {
+        body {
+          background-color: #000000;
+        }
+      }
+      #splash {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(circle, #000000 60%, #111111 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+      }
+      #splash img {
+        width: 150px;
+        height: 150px;
+        animation: fadein 1.2s ease-in-out forwards;
+      }
+      @keyframes fadein {
+        from {
+          opacity: 0;
+          transform: scale(0.8);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+    </style>
+  </head>
+
+  <body class="bg-gray-900">
+    <div id="splash">
+      <img src="/icon-512.png" alt="TradersXauusd Logo" />
+    </div>
+
+    <div id="root"></div>
+
+    <!-- React App -->
+    <script type="module" src="/index.tsx"></script>
+
+    <!-- Splash auto hide -->
+    <script>
+      window.addEventListener("load", () => {
+        setTimeout(() => {
+          const splash = document.getElementById("splash");
+          if (splash) splash.style.display = "none";
+        }, 1500);
+      });
+    </script>
+  </body>
+</html>
