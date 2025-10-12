@@ -13,7 +13,7 @@ import { LS_KEYS } from "./types";
 import { Footer } from "./components/Footer";
 import AdminPanel from "./components/AdminPanel";
 import { motion } from "framer-motion";
-import AnalysisResult from './components/AnalysisResult'; // Pastikan komponen ini ada
+import { AnalysisResult } from './components/AnalysisResult';
 
 // --- IMPORT YANG BERMASALAH SUDAH DIHAPUS ---
 
