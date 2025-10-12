@@ -1,9 +1,9 @@
-// File: App.tsx (FINAL FIX PROPS, ADMIN PANEL, DAN THEME CONTEXT)
+// File: App.tsx (FINAL FIX - PENGHILANGAN SEMUA TEMA DAN CONTEXT)
 
 import 'react-toastify/dist/ReactToastify.css';
 import { ToastContainer, toast } from 'react-toastify';
 
-import React, { useState, useEffect, useCallback, createContext, useContext } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "./context/AuthContext";
 import { LoginScreen } from "./components/LoginScreen";
 import { Header } from "./components/Header";
@@ -15,22 +15,7 @@ import AdminPanel from "./components/AdminPanel";
 import { motion } from "framer-motion";
 import { AnalysisResult } from './components/AnalysisResult';
 
-type Theme = 'dark' | 'light';
-
-// --- THEME CONTEXT ---
-interface ThemeContextType {
-    theme: Theme;
-    toggleTheme: () => void;
-}
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
-export const useTheme = () => {
-    const context = useContext(ThemeContext);
-    if (!context) {
-        throw new Error('useTheme must be used within a ThemeProvider');
-    }
-    return context;
-};
-// --- END THEME CONTEXT ---
+// HAPUS SEMUA LOGIC TEMA/CONTEXT DAN DEFINISI TYPE THEME
 
 // 🧩 Parsing hasil analisis AI (Tidak ada perubahan)
 const parseAnalysisText = (text: string, currentRiskProfile: "Low" | "Medium"): Analysis | null => {
@@ -52,7 +37,7 @@ const parseAnalysisText = (text: string, currentRiskProfile: "Low" | "Medium"): 
     const actionMatch = recText.match(/\bAksi\s*:\s*(Buy|Sell)/i);
     const entryMatch = recText.match(/\bEntry\s*:\s*([\d.,-]+)/i);
     const reasonMatch = recText.match(/\bRasional Entry\b\s*:\s*(.*)/i);
-    const slMatch = recText.match(/\bStop Loss\s*:\s*([\d.,-]+)/i);
+    const slMatch = text.match(/\bStop Loss\s*:\s*([\d.,-]+)/i); 
     const tp1 = recText.match(/\bTake Profit 1\s*:\s*([\d.,-]+)/i);
     const tp2 = recText.match(/\bTake Profit 2\s*:\s*([\d.,-]+)/i);
     const tp3 = recText.match(/\bTake Profit 3\s*:\s*([\d.,-]+)/i);
@@ -87,13 +72,12 @@ const parseAnalysisText = (text: string, currentRiskProfile: "Low" | "Medium"): 
 
 // 🧠 Main Application Component
 const MainApp: React.FC = () => {
-  // FINAL FIX: Panggil useTheme untuk mendapatkan nilai yang benar
-  const { theme } = useTheme(); 
-
+  // FINAL FIX: Hapus semua penggunaan useTheme()
+  
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [mimeType, setMimeType] = useState<string>("");
-  const [pair, setPair] = useState(""); // Dikembalikan ke kosong
-  const [timeframe, setTimeframe] = useState(""); // Dikembalikan ke kosong
+  const [pair, setPair] = useState(""); 
+  const [timeframe, setTimeframe] = useState(""); 
   const [risk, setRisk] = useState<"Low" | "Medium">("Medium");
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -101,7 +85,7 @@ const MainApp: React.FC = () => {
   const [preview, setPreview] = useState<string | null>(null);
 
   const { user } = useAuth();
-  // FINAL FIX: Set showAdmin ke true jika user adalah admin
+  // AKTIVASI ADMIN PANEL SECARA DEFAULT
   const [showAdmin, setShowAdmin] = useState(user?.isAdmin || false); 
   
   // 📁 Handle Upload Image (sama)
@@ -164,9 +148,10 @@ const MainApp: React.FC = () => {
   }, [imageBase64, mimeType, pair, timeframe, risk]);
 
   return (
-    <div className={`min-h-screen bg-gray-900 text-gray-200 p-4 sm:p-6 lg:p-8 ${theme === 'light' ? 'light-mode-specific-styles' : ''}`}>
+    // FINAL FIX: Hapus class tema spesifik
+    <div className={`min-h-screen bg-gray-900 text-gray-200 p-4 sm:p-6 lg:p-8`}>
       <div className="max-w-7xl mx-auto">
-        <Header /> {/* Header menggunakan Context */}
+        <Header /> {/* Header tanpa props tema */}
 
         {/* PERUBAHAN: Tombol Admin untuk switching */}
         {user?.isAdmin && (
@@ -281,36 +266,16 @@ const FullScreenLoader: React.FC = () => (
 
 // ⚙️ Wrapper utama (cek login)
 const App: React.FC = () => {
-  // --- THEME LOGIC UTAMA ---
-  const [theme, setTheme] = useState<Theme>(() => {
-    return (localStorage.getItem('theme') as Theme) || 'dark';
-  });
-
-  const toggleTheme = () => {
-    setTheme(current => {
-      const newTheme = current === 'dark' ? 'light' : 'dark';
-      return newTheme;
-    });
-  };
-
-  useEffect(() => {
-    document.body.className = ''; // Reset class
-    document.body.classList.add(theme);
-    localStorage.setItem('theme', theme);
-  }, [theme]);
-  // --- AKHIR THEME LOGIC UTAMA ---
-
+  // FINAL FIX: Hapus semua logic theme
+  
   const { user, loading } = useAuth();
   if (loading) return <FullScreenLoader />;
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}> {/* WRAP DENGAN PROVIDER */}
-      <>
-        {/* Halaman utama */}
-        {user ? <MainApp /> : <LoginScreen />}
-        <ToastContainer position="top-right" autoClose={3000} />
-      </>
-    </ThemeContext.Provider>
+    <>
+      {user ? <MainApp /> : <LoginScreen />}
+      <ToastContainer position="top-right" autoClose={3000} />
+    </>
   );
 };
 
