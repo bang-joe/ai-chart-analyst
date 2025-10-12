@@ -1,0 +1,5 @@
+{
+  "name": "AI Chart Analyst by Tradersxauusd",
+  "description": "An AI-powered application that analyzes trading chart images. Upload a chart, provide the pair and timeframe, and get a detailed technical analysis including trends, support/resistance, candlestick patterns, indicators, and entry recommendations.",
+  "requestFramePermissions": []
+}

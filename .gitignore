@@ -1,0 +1,30 @@
+# 🔐 Sensitive files
+.env
+.env.local
+functions/key.json
+
+# ⚙️ Dependencies
+node_modules/
+functions/node_modules/
+
+# 🧱 Build output
+dist/
+build/
+.cache/
+
+# ⚡ Firebase cache
+.firebaserc
+.firebase/
+
+# 🧩 IDE files
+.vscode/
+.DS_Store
+
+# 🔍 Logs
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# 🔒 Backup or temp files
+*.bak
+*.tmp
