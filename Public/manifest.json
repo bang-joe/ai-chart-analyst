@@ -1,28 +1,37 @@
 {
-  "name": "TradersXauusd Chart Analyst",
-  "short_name": "AI Chart Analyst",
-  "description": "AI Chart Analyst by Tradersxauusd — platform analisa chart emas otomatis dan edukasi trading profesional.",
+  "id": "/",
+  "scope": "/",
+  "name": "AI Chart Analyst by TradersXauusd",
+  "short_name": "TradersXAU",
+  "description": "AI Chart Analyst by TradersXauusd — platform analisa chart emas otomatis dan edukasi trading profesional.",
   "start_url": "/",
   "display": "standalone",
+  "orientation": "portrait-primary",
   "background_color": "#000000",
   "theme_color": "#FFD700",
-  "orientation": "portrait-primary",
+  "dir": "ltr",
+  "lang": "id",
+  "prefer_related_applications": false,
+  "display_override": ["window-controls-overlay"],
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  },
   "icons": [
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
     {
       "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    },
-    {
       "src": "/apple-touch-icon.png",
       "sizes": "180x180",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/png"
     },
     {
       "src": "/favicon-32x32.png",
@@ -34,5 +43,50 @@
       "sizes": "16x16",
       "type": "image/png"
     }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/pwa-screen-1.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "label": "Dashboard AI Chart Analyst"
+    },
+    {
+      "src": "/screenshots/pwa-screen-2.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "label": "Analisis chart otomatis"
+    }
+  ],
+  "categories": [
+    "finance",
+    "business",
+    "education"
+  ],
+  "shortcuts": [
+    {
+      "name": "Mulai Analisa Chart",
+      "short_name": "Analisa",
+      "description": "Upload chart dan dapatkan analisa AI langsung.",
+      "url": "/",
+      "icons": [
+        { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }
+      ]
+    },
+    {
+      "name": "Lihat Hasil Analisa",
+      "short_name": "Hasil",
+      "description": "Lihat analisa AI terbaru kamu.",
+      "url": "/results",
+      "icons": [
+        { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }
+      ]
+    }
+  ],
+  "features": [
+    "AI Chart Analyzer",
+    "Offline Ready",
+    "Cross Platform",
+    "Fast & Secure"
   ]
 }
