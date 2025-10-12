@@ -1,34 +1,41 @@
+// File: tsconfig.json (PERBAIKAN FINAL UNTUK MENDUKUNG VITE)
 {
   "compilerOptions": {
-    "target": "ES2022",
-    "experimentalDecorators": true,
-    "useDefineForClassFields": false,
+    "target": "ES2020",             // Mengubah target ke versi Node.js yang stabil
     "module": "ESNext",
-    "lib": [
-      "ES2022",
-      "DOM",
-      "DOM.Iterable"
-    ],
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "skipLibCheck": true,
-    "types": [
-      "node"
-    ],
-    "moduleResolution": "bundler",
+    
+    // PERBAIKAN KRUSIAL: Memberi tahu TS tentang variabel ENV di Vite
+    "types": ["vite/client", "node"], // Tambahkan "vite/client"
+    
+    // Resolusi modul
+    "moduleResolution": "node",     // Mengubah dari "bundler" ke "node" untuk kompatibilitas Vercel
     "isolatedModules": true,
     "moduleDetection": "force",
+
+    // React dan JSX
     "allowJs": true,
     "jsx": "react-jsx",
     "allowImportingTsExtensions": true,
     "noEmit": true,
+
+    // Base URL dan Path
     "baseUrl": ".",
     "paths": {
       "@/*": ["./*"]
-    }
+    },
+    
+    // Opsi lain
+    "strict": true,                 // Selalu aktifkan strict mode (opsional)
+    "forceConsistentCasingInFileNames": true,
+    "esModuleInterop": true
   },
   "include": [
     "src",
     "**/*.ts",
-    "**/*.tsx"
+    "**/*.tsx",
+    "vite-env.d.ts" // Pastikan file deklarasi Vite disertakan
   ],
   "exclude": ["node_modules", "dist"]
 }

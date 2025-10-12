@@ -1,4 +1,5 @@
-// File: App.tsx (VERSI FINAL YANG SUDAH DIPERBAIKI)
+// File: App.tsx (FINAL FIX PROPS, MENGHILANGKAN SEMUA ERROR TYPE INTRINSIC)
+
 import 'react-toastify/dist/ReactToastify.css';
 import { ToastContainer, toast } from 'react-toastify';
 
@@ -9,13 +10,10 @@ import { Header } from "./components/Header";
 import { ImageUploader } from "./components/ImageUploader";
 import { Loader } from "./components/Loader";
 import type { Analysis } from "./types";
-import { LS_KEYS } from "./types";
 import { Footer } from "./components/Footer";
 import AdminPanel from "./components/AdminPanel";
 import { motion } from "framer-motion";
 import { AnalysisResult } from './components/AnalysisResult';
-
-// --- IMPORT YANG BERMASALAH SUDAH DIHAPUS ---
 
 type Theme = 'dark' | 'light';
 
@@ -34,7 +32,7 @@ export const useTheme = () => {
 };
 // --- END THEME CONTEXT ---
 
-// 🧩 Parsing hasil analisis AI
+// 🧩 Parsing hasil analisis AI (Tidak ada perubahan)
 const parseAnalysisText = (text: string, currentRiskProfile: "Low" | "Medium"): Analysis | null => {
   try {
     const extractAndClean = (matchResult: RegExpMatchArray | null, fallback: string = "N/A") => {
@@ -89,7 +87,7 @@ const parseAnalysisText = (text: string, currentRiskProfile: "Low" | "Medium"): 
 
 // 🧠 Main Application Component
 const MainApp: React.FC = () => {
-  const themeContext = useTheme();
+  const { theme } = useTheme(); // Panggil useTheme di sini
 
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [mimeType, setMimeType] = useState<string>("");
@@ -104,10 +102,7 @@ const MainApp: React.FC = () => {
   const { user } = useAuth();
   const [showAdmin, setShowAdmin] = useState(false);
 
-  const theme = themeContext.theme;
-  const toggleTheme = themeContext.toggleTheme;
-
-  // 📁 Handle Upload Image
+  // 📁 Handle Upload Image (sama)
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
@@ -122,7 +117,7 @@ const MainApp: React.FC = () => {
     reader.readAsDataURL(f);
   };
 
-  // ⚙️ Handle AI Analysis (VERSI BARU YANG DIPERBAIKI)
+  // ⚙️ Handle AI Analysis (sama)
   const handleAnalyze = useCallback(async () => {
     if (!imageBase64 || !pair || !timeframe) {
       setError("Please upload an image and complete all fields.");
@@ -167,9 +162,10 @@ const MainApp: React.FC = () => {
   }, [imageBase64, mimeType, pair, timeframe, risk]);
 
   return (
+    // Hapus theme dari prop Header karena sudah ada di Context
     <div className={`min-h-screen bg-gray-900 text-gray-200 p-4 sm:p-6 lg:p-8 ${theme === 'light' ? 'light-mode-specific-styles' : ''}`}>
       <div className="max-w-7xl mx-auto">
-        <Header theme={theme} toggleTheme={toggleTheme} />
+        <Header /> {/* Header tidak lagi menerima props theme/toggleTheme */}
 
         {user?.isAdmin && (
           <div className="mt-4 flex justify-end">
@@ -189,6 +185,7 @@ const MainApp: React.FC = () => {
             <AdminPanel onClose={() => setShowAdmin(false)} />
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-fade-in-up">
+              {/* Sisa kode Anda sama persis... */}
               {/* LEFT */}
               <div className="bg-gray-800/50 p-6 rounded-2xl shadow-lg border border-gray-700 backdrop-blur-sm">
                 <h2 className="text-2xl font-bold text-white mb-6">1. Upload & Configure</h2>
@@ -272,7 +269,7 @@ const MainApp: React.FC = () => {
   );
 };
 
-// ⚙️ Loader layar penuh
+// ⚙️ Loader layar penuh (sama)
 const FullScreenLoader: React.FC = () => (
   <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center">
     <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-amber-400"></div>
