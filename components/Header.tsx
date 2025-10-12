@@ -1,21 +1,17 @@
-// File: Header.tsx (FINAL FIX - TAMBAHKAN TOMBOL ADMIN)
+// File: Header.tsx (FINAL FIX - HILANGKAN TOMBOL ADMIN)
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Logo } from './Logo';
-import { LogoutIcon, AdminIcon } from './icons'; // Pastikan Anda mengimpor AdminIcon
+import { LogoutIcon } from './icons'; 
 import { toast } from 'react-toastify'; 
-// Hapus semua import tema yang tersisa
+// Hapus semua import tema dan Admin Icon
 
-interface HeaderProps {
-  onToggleAdmin: () => void;
-  showAdminButton?: boolean;
-}
-
-export const Header: React.FC<HeaderProps> = ({ onToggleAdmin, showAdminButton }) => {
+export const Header: React.FC = () => {
+    // FINAL FIX: Hapus semua penggunaan theme context
     const { user, logout } = useAuth();
     
-    // ... handleLogout tetap sama
+    // --- FUNGSI BARU: Wrapper untuk Logout dengan Toast ---
     const handleLogout = async () => {
         try {
             await logout();
@@ -28,6 +24,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleAdmin, showAdminButton }
             toast.error("Gagal melakukan logout.");
         }
     };
+    // --- AKHIR FUNGSI BARU ---
     
     return (
         <header className="relative text-center animate-fade-in-down py-4 border-b border-gray-700/50">
@@ -53,16 +50,11 @@ export const Header: React.FC<HeaderProps> = ({ onToggleAdmin, showAdminButton }
                     </div>
 
                     <div className="flex flex-col space-y-1">
-                        {/* TOMBOL ADMIN PANEL SWITCH */}
-                        {showAdminButton && (
-                            <button 
-                                onClick={onToggleAdmin}
-                                className="bg-gray-700/80 hover:bg-blue-600/70 text-white p-2 rounded-full transition-colors duration-300 transform hover:scale-110"
-                                aria-label="Admin Panel"
-                                title="Admin Panel"
-                            >
-                                <span className="w-5 h-5 block"><AdminIcon/></span>
-                            </button>
+                        {user.isAdmin && (
+                            // Hapus tombol Admin Panel switching di sini
+                            <div className="text-sm text-amber-400 font-semibold bg-gray-700/80 p-1.5 rounded-full">
+                                ADMIN
+                            </div>
                         )}
                         <button 
                             onClick={handleLogout} 
