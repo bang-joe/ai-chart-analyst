@@ -1,4 +1,4 @@
-// File: context/AuthContext.tsx (VERSI BARU UNTUK VERCEL & SUPABASE)
+// File: context/AuthContext.tsx (TIDAK ADA PERUBAHAN LOGIKA DARI KODE ANDA)
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { toast } from 'react-toastify';
 

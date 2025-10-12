@@ -1,12 +1,13 @@
-// File: api/auth.ts (VERSI PERBAIKAN FINAL)
+// File: api/auth.ts (VERSI PERBAIKAN FINAL & AMAN)
 
 import { createClient } from '@supabase/supabase-js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-// PERBAIKAN: Gunakan nama variabel TANPA awalan VITE_ untuk backend
+// PERBAIKAN UTAMA: Menggunakan SUPABASE_SERVICE_ROLE_KEY untuk akses database yang aman.
+// Pastikan SUPABASE_URL dan SUPABASE_SERVICE_ROLE_KEY tersedia di Vercel (tanpa NEXT_PUBLIC_).
 const supabase = createClient(
   process.env.SUPABASE_URL!,
-  process.env.SUPABASE_ANON_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY! 
 );
 
 export default async function handler(
@@ -31,10 +32,11 @@ export default async function handler(
       .single();
 
     if (error || !user) {
+      // Jika error, cek log Supabase/Vercel. User hanya melihat pesan umum.
       throw new Error("Email atau Kode Aktivasi salah.");
     }
 
-    // Ganti 'activation_code' menjadi 'activation_cc' jika nama kolom di databasemu begitu
+    // Periksa kode aktivasi
     if (user.activation_code !== activationCode) {
       throw new Error("Email atau Kode Aktivasi salah.");
     }
@@ -47,6 +49,7 @@ export default async function handler(
       throw new Error("Masa aktif akun telah habis.");
     }
 
+    // Update last_login
     await supabase
       .from('members')
       .update({ last_login: new Date().toISOString() })
@@ -56,7 +59,9 @@ export default async function handler(
 
   } catch (error: any) {
     // Tambahkan log di server untuk debugging
-    console.error('[API AUTH ERROR]:', error);
-    return response.status(401).json({ message: error.message || 'Otentikasi gagal.' });
+    console.error('[API AUTH ERROR]:', error.message || error);
+    // Kembalikan error yang lebih umum jika ini adalah error server internal
+    const errorMessage = error.message.includes('A server error') ? 'Gagal terhubung ke server. Coba lagi.' : error.message;
+    return response.status(401).json({ message: errorMessage || 'Otentikasi gagal.' });
   }
 }
