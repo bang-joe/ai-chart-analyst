@@ -1,4 +1,4 @@
-// File: App.tsx (FINAL FIX - PENGHILANGAN SEMUA TEMA DAN CONTEXT)
+// File: App.tsx (FINAL FIX - HAPUS TEMA & INTEGRASI ADMIN)
 
 import 'react-toastify/dist/ReactToastify.css';
 import { ToastContainer, toast } from 'react-toastify';
@@ -11,11 +11,11 @@ import { ImageUploader } from "./components/ImageUploader";
 import { Loader } from "./components/Loader";
 import type { Analysis } from "./types";
 import { Footer } from "./components/Footer";
-import AdminPanel from "./components/AdminPanel";
+import AdminPanel from "./components/AdminPanel"; // <-- IMPORT ADMIN PANEL
 import { motion } from "framer-motion";
 import { AnalysisResult } from './components/AnalysisResult';
 
-// HAPUS SEMUA LOGIC TEMA/CONTEXT DAN DEFINISI TYPE THEME
+// HAPUS SEMUA DEFINISI DAN CONTEXT TEMA
 
 // 🧩 Parsing hasil analisis AI (Tidak ada perubahan)
 const parseAnalysisText = (text: string, currentRiskProfile: "Low" | "Medium"): Analysis | null => {

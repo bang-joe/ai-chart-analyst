@@ -1,3 +1,5 @@
+// File: AnalysisResult.tsx (FINAL FIX - WHITE-SPACE PRE-WRAP)
+
 import React, { useState, useEffect } from 'react';
 import type { Analysis, Feedback } from '../types';
 import { LS_KEYS } from '../types';
@@ -7,6 +9,7 @@ interface AnalysisResultProps {
     analysis: Analysis;
 }
 
+// PERBAIKAN: Tambahkan class whitespace-pre-wrap di sini
 const AnalysisItem: React.FC<{ icon: React.ReactNode; title: string; content: string, delay?: number }> = ({ icon, title, content, delay = 0 }) => (
     <div 
         className="flex items-start space-x-4 p-4 bg-gray-900/50 rounded-lg animate-fade-in-up"
@@ -15,19 +18,22 @@ const AnalysisItem: React.FC<{ icon: React.ReactNode; title: string; content: st
         <div className="flex-shrink-0 h-8 w-8 text-amber-400">{icon}</div>
         <div>
             <h4 className="font-semibold text-lg text-white">{title}</h4>
-            <p className="text-gray-300">{content}</p>
+            {/* ✅ FIX: Tambahkan whitespace-pre-wrap di sini */}
+            <p className="text-gray-300 whitespace-pre-wrap">{content}</p> 
         </div>
     </div>
 );
 
+// PERBAIKAN: Tambahkan class whitespace-pre-wrap di sini
 const RecommendationItem: React.FC<{ label: string; value: string; rationale?: string; }> = ({ label, value, rationale }) => (
     <div className="py-2 border-b border-gray-700 last:border-b-0">
         <div className="flex justify-between items-center text-sm">
             <span className="text-gray-400">{label}</span>
-            <span className="font-mono text-white bg-gray-700 px-2 py-1 rounded">{value}</span>
+            <span className="font-mono text-white bg-gray-700 px-2 py-1 rounded whitespace-pre-wrap">{value}</span>
         </div>
         {rationale && (
-            <p className="text-xs text-gray-400 italic pt-1.5 pl-1">
+            // ✅ FIX: Tambahkan whitespace-pre-wrap di sini
+            <p className="text-xs text-gray-400 italic pt-1.5 pl-1 whitespace-pre-wrap">
                 {rationale}
             </p>
         )}
@@ -166,7 +172,7 @@ export const AnalysisResult: React.FC<AnalysisResultProps> = ({ analysis }) => {
     );
 };
 
-// Global animation styles
+// Global animation styles (Dibiarkan sama)
 const style = document.createElement('style');
 style.innerHTML = `
 @keyframes fadeInDown {
