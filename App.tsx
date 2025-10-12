@@ -11,13 +11,13 @@ import { ImageUploader } from "./components/ImageUploader";
 import { Loader } from "./components/Loader";
 import type { Analysis } from "./types";
 import { Footer } from "./components/Footer";
-import AdminPanel from "./components/AdminPanel";
+import AdminPanel from "./components/AdminPanel"; // Pastikan path ini benar
 import { motion } from "framer-motion";
 import { AnalysisResult } from './components/AnalysisResult';
 
 // HAPUS SEMUA DEFINISI DAN CONTEXT TEMA
 
-// 🧩 Parsing hasil analisis AI (Tidak ada perubahan)
+// 🧩 Parsing hasil analisis AI (Tidak diubah, hanya untuk referensi)
 const parseAnalysisText = (text: string, currentRiskProfile: "Low" | "Medium"): Analysis | null => {
   try {
     const extractAndClean = (matchResult: RegExpMatchArray | null, fallback: string = "N/A") => {
@@ -86,8 +86,13 @@ const MainApp: React.FC = () => {
 
   const { user } = useAuth();
   
-  // LOGIC ASLI: Perlu tombol switch. Kita ubah agar ADMIN PANEL SELALU MUNCUL DI ATAS
-  // const [showAdmin, setShowAdmin] = useState(user?.isAdmin || false); 
+  // FINAL FIX: Mengubah Admin Panel menjadi state yang bisa diubah
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  useEffect(() => {
+    if (user?.isAdmin) {
+      setShowAdminPanel(true); // Tampilkan Admin Panel secara default jika admin
+    }
+  }, [user]);
 
   // 📁 Handle Upload Image (sama)
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -148,93 +153,94 @@ const MainApp: React.FC = () => {
     }
   }, [imageBase64, mimeType, pair, timeframe, risk]);
 
-  // FINAL FIX: Hapus logic showAdmin dan tampilkan Admin Panel langsung
-  if (user?.isAdmin) {
-    return <AdminPanel onClose={() => { /* logic kembali ke MainApp */ }} />; 
-  }
-  
+  // FINAL RENDER LOGIC
   return (
-    // FIX STYLING: Gunakan styling dark default
     <div className={`min-h-screen bg-gray-900 text-gray-200 p-4 sm:p-6 lg:p-8`}>
       <div className="max-w-7xl mx-auto">
-        <Header /> {/* Header tanpa props tema */}
+        {/* Header harus menerima fungsi toggle Admin Panel */}
+        <Header onToggleAdmin={() => setShowAdminPanel(s => !s)} showAdminButton={user?.isAdmin} /> 
 
         <main className="mt-8">
-          {/* LOGIC ANALISIS CHART UNTUK PENGGUNA NON-ADMIN */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-fade-in-up">
-            <div className="bg-gray-800/50 p-6 rounded-2xl shadow-lg border border-gray-700 backdrop-blur-sm">
-              <h2 className="text-2xl font-bold text-white mb-6">1. Upload & Configure</h2>
-              <ImageUploader previewUrl={preview} onChange={handleFile} />
-              <div className="space-y-4 mt-4">
-                <input
-                  type="text"
-                  placeholder="Pair (e.g., XAUUSD)"
-                  value={pair}
-                  onChange={(e) => setPair(e.target.value)}
-                  className="w-full bg-gray-900 border border-gray-600 text-white rounded-lg px-4 py-3 focus:ring-2 focus:ring-amber-500"
-                />
-                <input
-                  type="text"
-                  placeholder="Timeframe (e.g., H1, H4)"
-                  value={timeframe}
-                  onChange={(e) => setTimeframe(e.target.value)}
-                  className="w-full bg-gray-900 border border-gray-600 text-white rounded-lg px-4 py-3 focus:ring-2 focus:ring-amber-500"
-                />
-                <div className="flex gap-2 mt-3">
+          {/* LOGIC YANG MENGAKTIFKAN ADMIN PANEL */}
+          {showAdminPanel && user?.isAdmin ? (
+            <AdminPanel onClose={() => setShowAdminPanel(false)} />
+          ) : (
+            // Tampilan Analisis Chart
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-fade-in-up">
+              <div className="bg-gray-800/50 p-6 rounded-2xl shadow-lg border border-gray-700 backdrop-blur-sm">
+                <h2 className="text-2xl font-bold text-white mb-6">1. Upload & Configure</h2>
+                <ImageUploader previewUrl={preview} onChange={handleFile} />
+                <div className="space-y-4 mt-4">
+                  <input
+                    type="text"
+                    placeholder="Pair (e.g., XAUUSD)"
+                    value={pair}
+                    onChange={(e) => setPair(e.target.value)}
+                    className="w-full bg-gray-900 border border-gray-600 text-white rounded-lg px-4 py-3 focus:ring-2 focus:ring-amber-500"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Timeframe (e.g., H1, H4)"
+                    value={timeframe}
+                    onChange={(e) => setTimeframe(e.target.value)}
+                    className="w-full bg-gray-900 border border-gray-600 text-white rounded-lg px-4 py-3 focus:ring-2 focus:ring-amber-500"
+                  />
+                  <div className="flex gap-2 mt-3">
+                    <button
+                      onClick={() => setRisk("Low")}
+                      className={`flex-1 py-2 rounded-md font-semibold ${
+                        risk === "Low" ? "bg-amber-600 text-white" : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                      }`}
+                    >
+                      Low Risk
+                    </button>
+                    <button
+                      onClick={() => setRisk("Medium")}
+                      className={`flex-1 py-2 rounded-md font-semibold ${
+                        risk === "Medium" ? "bg-amber-600 text-white" : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                      }`}
+                    >
+                      Medium Risk
+                    </button>
+                  </div>
                   <button
-                    onClick={() => setRisk("Low")}
-                    className={`flex-1 py-2 rounded-md font-semibold ${
-                      risk === "Low" ? "bg-amber-600 text-white" : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                    }`}
+                    onClick={handleAnalyze}
+                    disabled={isLoading}
+                    className={`w-full font-bold py-3 px-4 rounded-lg transition-all duration-300 ${
+                      isLoading
+                        ? "bg-gray-600 cursor-wait"
+                        : "bg-amber-600 hover:bg-amber-700 transform hover:-translate-y-1 shadow-lg shadow-amber-500/30"
+                  }`}
                   >
-                    Low Risk
-                  </button>
-                  <button
-                    onClick={() => setRisk("Medium")}
-                    className={`flex-1 py-2 rounded-md font-semibold ${
-                      risk === "Medium" ? "bg-amber-600 text-white" : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                    }`}
-                  >
-                    Medium Risk
+                    {isLoading ? "Analyzing..." : "Analyze Chart"}
                   </button>
                 </div>
-                <button
-                  onClick={handleAnalyze}
-                  disabled={isLoading}
-                  className={`w-full font-bold py-3 px-4 rounded-lg transition-all duration-300 ${
-                    isLoading
-                      ? "bg-gray-600 cursor-wait"
-                      : "bg-amber-600 hover:bg-amber-700 transform hover:-translate-y-1 shadow-lg shadow-amber-500/30"
-                  }`}
-                >
-                  {isLoading ? "Analyzing..." : "Analyze Chart"}
-                </button>
               </div>
-            </div>
 
-            {/* RIGHT */}
-            <div className="bg-gray-800/50 p-6 rounded-2xl shadow-lg border border-gray-700 backdrop-blur-sm relative overflow-hidden">
-              <h2 className="text-2xl font-bold text-white mb-6">2. AI Analysis</h2>
-              {isLoading && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 0.05 }}
-                  className="absolute inset-0 bg-gradient-to-br from-amber-500 via-yellow-300 to-amber-600 blur-3xl animate-pulse"
-                />
-              )}
-              <div className="min-h-[400px] flex flex-col justify-center items-center relative z-10 text-center">
-                {isLoading && <Loader />}
-                {error && (
-                  <div className="text-red-400 bg-red-900/40 p-4 rounded-lg text-center shadow-md">{error}</div>
+              {/* RIGHT */}
+              <div className="bg-gray-800/50 p-6 rounded-2xl shadow-lg border border-gray-700 backdrop-blur-sm relative overflow-hidden">
+                <h2 className="text-2xl font-bold text-white mb-6">2. AI Analysis</h2>
+                {isLoading && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 0.05 }}
+                    className="absolute inset-0 bg-gradient-to-br from-amber-500 via-yellow-300 to-amber-600 blur-3xl animate-pulse"
+                  />
                 )}
-                {/* Asumsikan AnalysisResult di-import */}
-                {!isLoading && !error && analysis && <AnalysisResult analysis={analysis} />}
-                {!isLoading && !error && !analysis && (
-                  <p className="text-gray-400">Upload chart dan klik "Analyze Chart" untuk memulai analisis AI.</p>
-                )}
+                <div className="min-h-[400px] flex flex-col justify-center items-center relative z-10 text-center">
+                  {isLoading && <Loader />}
+                  {error && (
+                    <div className="text-red-400 bg-red-900/40 p-4 rounded-lg text-center shadow-md">{error}</div>
+                  )}
+                  {/* Asumsikan AnalysisResult di-import */}
+                  {!isLoading && !error && analysis && <AnalysisResult analysis={analysis} />}
+                  {!isLoading && !error && !analysis && (
+                    <p className="text-gray-400">Upload chart dan klik "Analyze Chart" untuk memulai analisis AI.</p>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </main>
 
         <Footer />

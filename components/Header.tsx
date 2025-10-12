@@ -1,17 +1,21 @@
-// File: Header.tsx (FINAL FIX - HILANGKAN SEMUA ERROR TYPE DARI TEMA)
+// File: Header.tsx (FINAL FIX - TAMBAHKAN TOMBOL ADMIN)
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Logo } from './Logo';
-import { LogoutIcon } from './icons'; 
+import { LogoutIcon, AdminIcon } from './icons'; // Pastikan Anda mengimpor AdminIcon
 import { toast } from 'react-toastify'; 
 // Hapus semua import tema yang tersisa
 
-export const Header: React.FC = () => {
-    // FINAL FIX: Hapus semua penggunaan theme context
+interface HeaderProps {
+  onToggleAdmin: () => void;
+  showAdminButton?: boolean;
+}
+
+export const Header: React.FC<HeaderProps> = ({ onToggleAdmin, showAdminButton }) => {
     const { user, logout } = useAuth();
     
-    // --- FUNGSI BARU: Wrapper untuk Logout dengan Toast ---
+    // ... handleLogout tetap sama
     const handleLogout = async () => {
         try {
             await logout();
@@ -24,7 +28,6 @@ export const Header: React.FC = () => {
             toast.error("Gagal melakukan logout.");
         }
     };
-    // --- AKHIR FUNGSI BARU ---
     
     return (
         <header className="relative text-center animate-fade-in-down py-4 border-b border-gray-700/50">
@@ -50,10 +53,16 @@ export const Header: React.FC = () => {
                     </div>
 
                     <div className="flex flex-col space-y-1">
-                        {user.isAdmin && (
-                            <div className="text-sm text-amber-400 font-semibold bg-gray-700/80 p-1.5 rounded-full">
-                                ADMIN
-                            </div>
+                        {/* TOMBOL ADMIN PANEL SWITCH */}
+                        {showAdminButton && (
+                            <button 
+                                onClick={onToggleAdmin}
+                                className="bg-gray-700/80 hover:bg-blue-600/70 text-white p-2 rounded-full transition-colors duration-300 transform hover:scale-110"
+                                aria-label="Admin Panel"
+                                title="Admin Panel"
+                            >
+                                <span className="w-5 h-5 block"><AdminIcon/></span>
+                            </button>
                         )}
                         <button 
                             onClick={handleLogout} 
