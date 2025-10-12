@@ -1,20 +1,19 @@
 // File: vite.config.ts (VERSI FINAL UNTUK MENDUKUNG ENV VERCEL/NEXT_PUBLIC_)
-import { defineConfig, loadEnv } from 'vite'; // <<< TAMBAHKAN loadEnv
+import { defineConfig, loadEnv } from 'vite'; 
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
 // Eksport sebagai fungsi agar kita bisa mendapatkan mode (development/production)
 export default defineConfig(({ mode }) => {
   // 1. Muat semua variabel lingkungan dari file .env (dan Vercel)
-  // Vite akan memuatnya ke process.env
+  // Ini penting agar Vite tahu ada variabel lingkungan
   const env = loadEnv(mode, process.cwd(), '');
 
   // 2. Siapkan objek envClient yang hanya berisi variabel yang dibutuhkan klien
-  // Kita akan mengambil semua yang diawali dengan 'NEXT_PUBLIC_' dan 'VITE_'
   const envClient = Object.keys(env)
     .filter(key => key.startsWith('NEXT_PUBLIC_') || key.startsWith('VITE_'))
     .reduce((acc, key) => {
-      // Pastikan nilai dikonversi menjadi string agar dapat di-replace oleh Vite
+      // Menyuntikkan variabel dengan format process.env.VAR_NAME agar konsisten dengan kode Anda
       acc[`process.env.${key}`] = JSON.stringify(env[key]);
       return acc;
     }, {});
