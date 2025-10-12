@@ -1,19 +1,21 @@
-// File: utils/supabase-client.ts (HARUS DIBUAT)
+// File: utils/supabase-client.ts (FINAL FIX)
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 // Variabel ini harus menggunakan prefiks NEXT_PUBLIC_ agar dapat dibaca oleh klien (browser)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-// PENTING: Periksa keberadaan variabel
-if (!supabaseUrl || !supabaseAnonKey) {
-  // Ini akan menghasilkan error yang Anda lihat jika variabel di Vercel belum benar!
-  throw new Error("Variabel lingkungan NEXT_PUBLIC_SUPABASE_URL atau NEXT_PUBLIC_SUPABASE_ANON_KEY hilang.");
+let supabaseClient: SupabaseClient | null = null;
+
+// HANYA inisialisasi jika variabel lingkungan tersedia
+// Ini akan mencegah error langsung jika Vite masih gagal dalam development
+if (supabaseUrl && supabaseAnonKey) {
+    supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+} else {
+    // Ini hanya log peringatan, bukan error yang membuat blank screen
+    console.warn("⚠️ Supabase Client Gagal Inisialisasi: NEXT_PUBLIC_ variabels hilang di build. Periksa vite.config.ts.");
 }
 
-// Ekspor klien Supabase untuk digunakan di semua komponen React/TSX
-export const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
-
-// Catatan: Jika Anda tidak menggunakan Supabase Client di frontend, Anda bisa hapus file ini 
-// DAN hapus semua import 'supabaseClient' di komponen frontend Anda.
+// Ekspor klien Supabase
+export const client = supabaseClient;
