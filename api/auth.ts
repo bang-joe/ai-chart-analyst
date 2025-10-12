@@ -1,10 +1,9 @@
-// File: api/auth.ts (VERSI PERBAIKAN FINAL & AMAN)
+// File: api/auth.ts (VERSI FINAL - FIX TYPESCRIPT)
 
 import { createClient } from '@supabase/supabase-js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 // PERBAIKAN UTAMA: Menggunakan SUPABASE_SERVICE_ROLE_KEY untuk akses database yang aman.
-// Pastikan SUPABASE_URL dan SUPABASE_SERVICE_ROLE_KEY tersedia di Vercel (tanpa prefiks).
 const supabase = createClient(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY! 
@@ -62,7 +61,7 @@ export default async function handler(
     // 5. Kirim data pengguna kembali
     return response.status(200).json({ message: 'Login berhasil!', user });
 
-  } catch (error: any) {
+  } catch (error: any) { // <-- PERBAIKAN TS
     // Tambahkan log di server untuk debugging
     console.error('[API AUTH ERROR]:', error.message || error);
     
