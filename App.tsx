@@ -1,4 +1,4 @@
-// File: App.tsx (FINAL FIX PROPS, MENGHILANGKAN SEMUA ERROR TYPE INTRINSIC)
+// File: App.tsx (FINAL FIX PROPS, ADMIN PANEL, DAN THEME CONTEXT)
 
 import 'react-toastify/dist/ReactToastify.css';
 import { ToastContainer, toast } from 'react-toastify';
@@ -87,12 +87,13 @@ const parseAnalysisText = (text: string, currentRiskProfile: "Low" | "Medium"): 
 
 // 🧠 Main Application Component
 const MainApp: React.FC = () => {
-  const { theme } = useTheme(); // Panggil useTheme di sini
+  // FINAL FIX: Panggil useTheme untuk mendapatkan nilai yang benar
+  const { theme } = useTheme(); 
 
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [mimeType, setMimeType] = useState<string>("");
-  const [pair, setPair] = useState("XAUUSD");
-  const [timeframe, setTimeframe] = useState("H1");
+  const [pair, setPair] = useState(""); // Dikembalikan ke kosong
+  const [timeframe, setTimeframe] = useState(""); // Dikembalikan ke kosong
   const [risk, setRisk] = useState<"Low" | "Medium">("Medium");
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -100,8 +101,9 @@ const MainApp: React.FC = () => {
   const [preview, setPreview] = useState<string | null>(null);
 
   const { user } = useAuth();
-  const [showAdmin, setShowAdmin] = useState(false);
-
+  // FINAL FIX: Set showAdmin ke true jika user adalah admin
+  const [showAdmin, setShowAdmin] = useState(user?.isAdmin || false); 
+  
   // 📁 Handle Upload Image (sama)
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -162,11 +164,11 @@ const MainApp: React.FC = () => {
   }, [imageBase64, mimeType, pair, timeframe, risk]);
 
   return (
-    // Hapus theme dari prop Header karena sudah ada di Context
     <div className={`min-h-screen bg-gray-900 text-gray-200 p-4 sm:p-6 lg:p-8 ${theme === 'light' ? 'light-mode-specific-styles' : ''}`}>
       <div className="max-w-7xl mx-auto">
-        <Header /> {/* Header tidak lagi menerima props theme/toggleTheme */}
+        <Header /> {/* Header menggunakan Context */}
 
+        {/* PERUBAHAN: Tombol Admin untuk switching */}
         {user?.isAdmin && (
           <div className="mt-4 flex justify-end">
             <button
@@ -181,12 +183,12 @@ const MainApp: React.FC = () => {
         )}
 
         <main className="mt-8">
+          {/* LOGIC YANG MENGAKTIFKAN ADMIN PANEL */}
           {showAdmin && user?.isAdmin ? (
             <AdminPanel onClose={() => setShowAdmin(false)} />
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-fade-in-up">
-              {/* Sisa kode Anda sama persis... */}
-              {/* LEFT */}
+              {/* Sisa kode App/Analisis Anda */}
               <div className="bg-gray-800/50 p-6 rounded-2xl shadow-lg border border-gray-700 backdrop-blur-sm">
                 <h2 className="text-2xl font-bold text-white mb-6">1. Upload & Configure</h2>
                 <ImageUploader previewUrl={preview} onChange={handleFile} />
@@ -304,7 +306,7 @@ const App: React.FC = () => {
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}> {/* WRAP DENGAN PROVIDER */}
       <>
-        {/* Tambahkan kelas tema ke elemen utama atau gunakan style di CSS global */}
+        {/* Halaman utama */}
         {user ? <MainApp /> : <LoginScreen />}
         <ToastContainer position="top-right" autoClose={3000} />
       </>
