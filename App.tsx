@@ -1,4 +1,4 @@
-// File: App.tsx (FINAL FIX + RESTORE LAST STATE)
+// File: App.tsx (FINAL FIX + RESTORE LAST STATE + LOAD LAST BUTTON)
 import 'react-toastify/dist/ReactToastify.css';
 import { ToastContainer, toast } from 'react-toastify';
 import React, { useState, useEffect, useCallback } from "react";
@@ -13,7 +13,7 @@ import AdminPanel from "./components/AdminPanel";
 import { motion } from "framer-motion";
 import { AnalysisResult } from './components/AnalysisResult';
 
-// 🧩 Parsing hasil analisis AI
+// 🧩 Parsing hasil analisis AI (tidak diubah)
 const parseAnalysisText = (text: string, currentRiskProfile: "Low" | "Medium"): Analysis | null => {
   try {
     const extractAndClean = (matchResult: RegExpMatchArray | null, fallback: string = "N/A") => {
@@ -77,7 +77,7 @@ const MainApp: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
 
-  // 🟡 Added: Restore state dari localStorage saat load ulang
+  // Restore state otomatis saat load ulang
   useEffect(() => {
     const savedPair = localStorage.getItem("pair");
     const savedTimeframe = localStorage.getItem("timeframe");
@@ -92,23 +92,19 @@ const MainApp: React.FC = () => {
     if (savedPreview) setPreview(savedPreview);
   }, []);
 
-  // 🟡 Added: Simpan otomatis tiap kali user ubah input atau hasil
+  // Simpan otomatis setiap perubahan
   useEffect(() => {
     localStorage.setItem("pair", pair);
   }, [pair]);
-
   useEffect(() => {
     localStorage.setItem("timeframe", timeframe);
   }, [timeframe]);
-
   useEffect(() => {
     localStorage.setItem("risk", risk);
   }, [risk]);
-
   useEffect(() => {
     if (analysis) localStorage.setItem("analysisResult", JSON.stringify(analysis));
   }, [analysis]);
-
   useEffect(() => {
     if (preview) localStorage.setItem("preview", preview);
   }, [preview]);
@@ -163,6 +159,23 @@ const MainApp: React.FC = () => {
     }
   }, [imageBase64, mimeType, pair, timeframe, risk]);
 
+  // 🟡 Tambahan: Tombol manual untuk load analisa terakhir
+  const handleLoadLast = () => {
+    const savedPair = localStorage.getItem("pair");
+    const savedTimeframe = localStorage.getItem("timeframe");
+    const savedRisk = localStorage.getItem("risk");
+    const savedAnalysis = localStorage.getItem("analysisResult");
+    const savedPreview = localStorage.getItem("preview");
+
+    if (savedPair) setPair(savedPair);
+    if (savedTimeframe) setTimeframe(savedTimeframe);
+    if (savedRisk) setRisk(savedRisk as "Low" | "Medium");
+    if (savedAnalysis) setAnalysis(JSON.parse(savedAnalysis));
+    if (savedPreview) setPreview(savedPreview);
+
+    toast.info("Last analysis loaded!", { position: "bottom-right" });
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-fade-in-up">
       <div className="bg-gray-800/50 p-6 rounded-2xl shadow-lg border border-gray-700 backdrop-blur-sm">
@@ -197,6 +210,7 @@ const MainApp: React.FC = () => {
               Medium Risk
             </button>
           </div>
+
           <button
             onClick={handleAnalyze}
             disabled={isLoading}
@@ -208,6 +222,16 @@ const MainApp: React.FC = () => {
           >
             {isLoading ? "Analyzing..." : "Analyze Chart"}
           </button>
+
+          {/* 🟢 Tombol Load Last Analysis */}
+          {localStorage.getItem("analysisResult") && (
+            <button
+              onClick={handleLoadLast}
+              className="w-full font-semibold py-2 px-4 mt-3 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-200 transition-all"
+            >
+              Load Last Analysis
+            </button>
+          )}
         </div>
       </div>
 
@@ -233,20 +257,17 @@ const MainApp: React.FC = () => {
   );
 };
 
-// ⚙️ Loader layar penuh
-const FullScreenLoader: React.FC = () => (
-  <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center">
-    <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-amber-400"></div>
-    <p className="text-amber-300 mt-4">Initializing Session...</p>
-  </div>
-);
-
-// ⚙️ Wrapper utama (cek login + admin)
+// ⚙️ Wrapper utama (tidak diubah)
 const App: React.FC = () => {
   const { user, loading } = useAuth();
   const [showAdminPanel, setShowAdminPanel] = useState(false);
 
-  if (loading) return <FullScreenLoader />;
+  if (loading) return (
+    <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center">
+      <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-amber-400"></div>
+      <p className="text-amber-300 mt-4">Initializing Session...</p>
+    </div>
+  );
 
   if (user?.isAdmin && showAdminPanel) {
     return <AdminPanel onClose={() => setShowAdminPanel(false)} />;
