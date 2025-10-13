@@ -1,4 +1,4 @@
-// File: App.tsx (FINAL FIX - AKTIFKAN ADMIN PANEL)
+// File: App.tsx (FINAL FIX + RESTORE LAST STATE)
 import 'react-toastify/dist/ReactToastify.css';
 import { ToastContainer, toast } from 'react-toastify';
 import React, { useState, useEffect, useCallback } from "react";
@@ -9,11 +9,11 @@ import { ImageUploader } from "./components/ImageUploader";
 import { Loader } from "./components/Loader";
 import type { Analysis } from "./types";
 import { Footer } from "./components/Footer";
-import AdminPanel from "./components/AdminPanel"; // ✅ aktifkan admin panel
+import AdminPanel from "./components/AdminPanel";
 import { motion } from "framer-motion";
 import { AnalysisResult } from './components/AnalysisResult';
 
-// 🧩 Parsing hasil analisis AI (sama seperti sebelumnya)
+// 🧩 Parsing hasil analisis AI
 const parseAnalysisText = (text: string, currentRiskProfile: "Low" | "Medium"): Analysis | null => {
   try {
     const extractAndClean = (matchResult: RegExpMatchArray | null, fallback: string = "N/A") => {
@@ -76,6 +76,42 @@ const MainApp: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+
+  // 🟡 Added: Restore state dari localStorage saat load ulang
+  useEffect(() => {
+    const savedPair = localStorage.getItem("pair");
+    const savedTimeframe = localStorage.getItem("timeframe");
+    const savedRisk = localStorage.getItem("risk");
+    const savedAnalysis = localStorage.getItem("analysisResult");
+    const savedPreview = localStorage.getItem("preview");
+
+    if (savedPair) setPair(savedPair);
+    if (savedTimeframe) setTimeframe(savedTimeframe);
+    if (savedRisk) setRisk(savedRisk as "Low" | "Medium");
+    if (savedAnalysis) setAnalysis(JSON.parse(savedAnalysis));
+    if (savedPreview) setPreview(savedPreview);
+  }, []);
+
+  // 🟡 Added: Simpan otomatis tiap kali user ubah input atau hasil
+  useEffect(() => {
+    localStorage.setItem("pair", pair);
+  }, [pair]);
+
+  useEffect(() => {
+    localStorage.setItem("timeframe", timeframe);
+  }, [timeframe]);
+
+  useEffect(() => {
+    localStorage.setItem("risk", risk);
+  }, [risk]);
+
+  useEffect(() => {
+    if (analysis) localStorage.setItem("analysisResult", JSON.stringify(analysis));
+  }, [analysis]);
+
+  useEffect(() => {
+    if (preview) localStorage.setItem("preview", preview);
+  }, [preview]);
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -208,22 +244,20 @@ const FullScreenLoader: React.FC = () => (
 // ⚙️ Wrapper utama (cek login + admin)
 const App: React.FC = () => {
   const { user, loading } = useAuth();
-  const [showAdminPanel, setShowAdminPanel] = useState(false); // ✅ Tambahan untuk buka Admin Panel
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
 
   if (loading) return <FullScreenLoader />;
 
-  // ✅ Admin Panel View
   if (user?.isAdmin && showAdminPanel) {
     return <AdminPanel onClose={() => setShowAdminPanel(false)} />;
   }
 
-  // ✅ Main View
   return (
     <>
       {user ? (
         <div className="min-h-screen bg-gray-900 text-gray-200 p-4 sm:p-6 lg:p-8">
           <div className="max-w-7xl mx-auto">
-            <Header onOpenAdmin={() => setShowAdminPanel(true)} /> {/* ✅ aktifkan tombol admin */}
+            <Header onOpenAdmin={() => setShowAdminPanel(true)} />
             <main className="mt-8">
               <MainApp />
             </main>
