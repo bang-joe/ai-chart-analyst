@@ -5,22 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AI Chart Analyst by Tradersxauusd</title>
 
-    <!-- Favicon -->
+    <!-- FAVICONS -->
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
 
-    <!-- Meta -->
-    <meta name="description" content="AI Chart Analyst by Tradersxauusd — platform analisa chart emas otomatis dan edukasi trading profesional." />
-    <meta name="theme-color" content="#FFD700" />
+    <!-- META SEO -->
+    <meta
+      name="description"
+      content="AI Chart Analyst by Tradersxauusd — platform analisa chart emas otomatis dan edukasi trading profesional."
+    />
 
-    <!-- Tailwind -->
+    <!-- TAILWIND CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
 
+    <!-- STYLE -->
     <style>
-      body {
-        background-color: #000000;
+      @media (prefers-color-scheme: dark) {
+        body {
+          background-color: #000000;
+        }
       }
+
       #splash {
         position: fixed;
         top: 0;
@@ -33,11 +39,13 @@
         justify-content: center;
         z-index: 9999;
       }
+
       #splash img {
         width: 150px;
         height: 150px;
         animation: fadein 1.2s ease-in-out forwards;
       }
+
       @keyframes fadein {
         from {
           opacity: 0;
@@ -49,18 +57,22 @@
         }
       }
     </style>
+
+    <!-- ENTRY SCRIPT -->
+    <script type="module" crossorigin src="/assets/index-DRi_Z1YB.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-GNLSjkBZ.css" />
   </head>
 
   <body class="bg-gray-900">
+    <!-- SPLASH SCREEN -->
     <div id="splash">
       <img src="/icon-512.png" alt="TradersXauusd Logo" />
     </div>
 
+    <!-- ROOT REACT APP -->
     <div id="root"></div>
 
-    <!-- React Entry -->
-    <script type="module" src="/src/index.tsx"></script>
-
+    <!-- SPLASH AUTO HIDE -->
     <script>
       window.addEventListener("load", () => {
         setTimeout(() => {
