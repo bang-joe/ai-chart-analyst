@@ -4,12 +4,33 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AI Chart Analyst by Tradersxauusd</title>
-    <meta name="description" content="AI Chart Analyst by Tradersxauusd — platform analisa chart emas otomatis dan edukasi trading profesional." />
+    <meta
+      name="description"
+      content="AI Chart Analyst by Tradersxauusd — platform analisa chart emas otomatis dan edukasi trading profesional."
+    />
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- 🟡 Tambahan untuk PWA -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#F5C542" />
   </head>
 
   <body class="bg-gray-900">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
+
+    <!-- 🟢 Registrasi Service Worker -->
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker
+            .register("/service-worker.js")
+            .then(() => console.log("✅ Service Worker registered"))
+            .catch((err) =>
+              console.error("❌ Service Worker registration failed:", err)
+            );
+        });
+      }
+    </script>
   </body>
 </html>
