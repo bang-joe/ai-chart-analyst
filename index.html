@@ -5,99 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AI Chart Analyst by Tradersxauusd</title>
 
-    <!-- ✅ Favicon -->
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <!-- SEO META -->
+    <meta name="description" content="AI Chart Analyst by Tradersxauusd — platform analisa chart emas otomatis dan edukasi trading profesional.">
 
-    <!-- ✅ SEO dan Deskripsi -->
-    <meta name="description" content="AI Chart Analyst by Tradersxauusd — platform analisa chart emas otomatis dan edukasi trading profesional." />
-    <meta name="referrer" content="strict-origin-when-cross-origin" />
-
-    <!-- ✅ Tailwind CSS -->
+    <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- 🟡 PWA Manifest + Apple Config -->
-    <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#FFD700" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="TradersXauusd" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!-- Main React Entry -->
+    <script type="module" src="/src/index.tsx"></script>
 
-    <!-- 🟢 Service Worker Register -->
-    <script>
-      if ("serviceWorker" in navigator) {
-        window.addEventListener("load", () => {
-          navigator.serviceWorker
-            .register("/service-worker.js")
-            .then(() => console.log("✅ Service Worker registered"))
-            .catch((err) =>
-              console.error("❌ Service Worker registration failed:", err)
-            );
-        });
-      }
-    </script>
-
-    <!-- ✨ Splash Screen Style -->
     <style>
-      @media (prefers-color-scheme: dark) {
-        body {
-          background-color: #000000;
-        }
-      }
-
-      #splash {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: radial-gradient(circle, #000000 60%, #111111 100%);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 9999;
-      }
-
-      #splash img {
-        width: 150px;
-        height: 150px;
-        animation: fadein 1.2s ease-in-out forwards;
-      }
-
-      @keyframes fadein {
-        from {
-          opacity: 0;
-          transform: scale(0.8);
-        }
-        to {
-          opacity: 1;
-          transform: scale(1);
-        }
+      body {
+        background-color: #0a0a0a;
+        color: #fff;
+        font-family: system-ui, sans-serif;
+        margin: 0;
+        padding: 0;
       }
     </style>
   </head>
 
-  <body class="bg-gray-900">
-    <!-- ✨ Splash Screen -->
-    <div id="splash">
-      <img src="/icon-512.png" alt="TradersXauusd Logo" />
-    </div>
-
-    <!-- Root React App -->
+  <body>
     <div id="root"></div>
-
-    <!-- ✅ Entry Point React -->
-    <script type="module" src="/index.tsx"></script>
-
-    <!-- 🔄 Script untuk Hilangkan Splash -->
-    <script>
-      window.addEventListener("load", () => {
-        setTimeout(() => {
-          const splash = document.getElementById("splash");
-          if (splash) splash.style.display = "none";
-        }, 1500);
-      });
-    </script>
   </body>
 </html>
