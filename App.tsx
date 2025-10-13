@@ -1,4 +1,4 @@
-// File: App.tsx (FINAL FIX + RESTORE LAST STATE + LOAD LAST BUTTON)
+// File: App.tsx (FINAL FIX + RESTORE LAST STATE + LOAD LAST ANALYSIS)
 import 'react-toastify/dist/ReactToastify.css';
 import { ToastContainer, toast } from 'react-toastify';
 import React, { useState, useEffect, useCallback } from "react";
@@ -77,13 +77,8 @@ const MainApp: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
 
-  // 🟢 Tambahan baru
-  const [isRestoring, setIsRestoring] = useState(true);
-
-  // 🟡 Restore state dari localStorage saat load ulang
+  // 🟡 Restore state dari localStorage
   useEffect(() => {
-    if (typeof window === "undefined") return; // ✅ biar aman di SSR
-
     const savedPair = localStorage.getItem("pair");
     const savedTimeframe = localStorage.getItem("timeframe");
     const savedRisk = localStorage.getItem("risk");
@@ -95,39 +90,17 @@ const MainApp: React.FC = () => {
     if (savedRisk) setRisk(savedRisk as "Low" | "Medium");
     if (savedAnalysis) setAnalysis(JSON.parse(savedAnalysis));
     if (savedPreview) setPreview(savedPreview);
-
-    setTimeout(() => setIsRestoring(false), 300); // ⏱️ delay biar gak blank
   }, []);
 
-  // ⏳ Loader sementara sebelum data selesai restore
-  if (isRestoring) {
-    return (
-      <div className="flex flex-col justify-center items-center text-gray-400 min-h-[400px]">
-        <div className="w-8 h-8 border-4 border-dashed rounded-full animate-spin border-amber-400"></div>
-        <p className="mt-3">Loading saved session...</p>
-      </div>
-    );
-  }
-
-  // 🟡 Simpan otomatis tiap kali user ubah input atau hasil
+  // 🟡 Simpan otomatis setiap perubahan
+  useEffect(() => localStorage.setItem("pair", pair), [pair]);
+  useEffect(() => localStorage.setItem("timeframe", timeframe), [timeframe]);
+  useEffect(() => localStorage.setItem("risk", risk), [risk]);
   useEffect(() => {
-    if (typeof window !== "undefined") localStorage.setItem("pair", pair);
-  }, [pair]);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") localStorage.setItem("timeframe", timeframe);
-  }, [timeframe]);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") localStorage.setItem("risk", risk);
-  }, [risk]);
-
-  useEffect(() => {
-    if (typeof window !== "undefined" && analysis) localStorage.setItem("analysisResult", JSON.stringify(analysis));
+    if (analysis) localStorage.setItem("analysisResult", JSON.stringify(analysis));
   }, [analysis]);
-
   useEffect(() => {
-    if (typeof window !== "undefined" && preview) localStorage.setItem("preview", preview);
+    if (preview) localStorage.setItem("preview", preview);
   }, [preview]);
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -180,106 +153,105 @@ const MainApp: React.FC = () => {
     }
   }, [imageBase64, mimeType, pair, timeframe, risk]);
 
-  // 🟢 Tombol Load Last Analysis manual
+  // 🟢 Tambahan tombol manual untuk load analisa terakhir
   const handleLoadLast = () => {
-    if (typeof window === "undefined") return;
+    try {
+      const savedPair = localStorage.getItem("pair");
+      const savedTimeframe = localStorage.getItem("timeframe");
+      const savedRisk = localStorage.getItem("risk");
+      const savedAnalysis = localStorage.getItem("analysisResult");
+      const savedPreview = localStorage.getItem("preview");
 
-    const savedPair = localStorage.getItem("pair");
-    const savedTimeframe = localStorage.getItem("timeframe");
-    const savedRisk = localStorage.getItem("risk");
-    const savedAnalysis = localStorage.getItem("analysisResult");
-    const savedPreview = localStorage.getItem("preview");
+      if (savedPair) setPair(savedPair);
+      if (savedTimeframe) setTimeframe(savedTimeframe);
+      if (savedRisk) setRisk(savedRisk as "Low" | "Medium");
+      if (savedAnalysis) setAnalysis(JSON.parse(savedAnalysis));
+      if (savedPreview) setPreview(savedPreview);
 
-    if (savedPair) setPair(savedPair);
-    if (savedTimeframe) setTimeframe(savedTimeframe);
-    if (savedRisk) setRisk(savedRisk as "Low" | "Medium");
-    if (savedAnalysis) setAnalysis(JSON.parse(savedAnalysis));
-    if (savedPreview) setPreview(savedPreview);
-
-    toast.info("Last analysis loaded!", { position: "bottom-right" });
+      toast.info("Last analysis loaded!", { position: "bottom-right" });
+    } catch (err) {
+      console.error("Failed to load last analysis:", err);
+    }
   };
 
   return (
-    <>
-      {/* 🟢 Tombol Load Last Analysis di bagian atas */}
-      {typeof window !== "undefined" && localStorage.getItem("analysisResult") && (
-        <div className="flex justify-end mb-4">
-          <button
-            onClick={handleLoadLast}
-            className="font-semibold py-2 px-4 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-200 transition-all"
-          >
-            Load Last Analysis
-          </button>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-fade-in-up">
-        <div className="bg-gray-800/50 p-6 rounded-2xl shadow-lg border border-gray-700 backdrop-blur-sm">
-          <h2 className="text-2xl font-bold text-white mb-6">1. Upload & Configure</h2>
-          <ImageUploader previewUrl={preview} onChange={handleFile} />
-          <div className="space-y-4 mt-4">
-            <input
-              type="text"
-              placeholder="Pair (e.g., XAUUSD)"
-              value={pair}
-              onChange={(e) => setPair(e.target.value)}
-              className="w-full bg-gray-900 border border-gray-600 text-white rounded-lg px-4 py-3 focus:ring-2 focus:ring-amber-500"
-            />
-            <input
-              type="text"
-              placeholder="Timeframe (e.g., H1, H4)"
-              value={timeframe}
-              onChange={(e) => setTimeframe(e.target.value)}
-              className="w-full bg-gray-900 border border-gray-600 text-white rounded-lg px-4 py-3 focus:ring-2 focus:ring-amber-500"
-            />
-            <div className="flex gap-2 mt-3">
-              <button
-                onClick={() => setRisk("Low")}
-                className={`flex-1 py-2 rounded-md font-semibold ${risk === "Low" ? "bg-amber-600 text-white" : "bg-gray-700 text-gray-300 hover:bg-gray-600"}`}
-              >
-                Low Risk
-              </button>
-              <button
-                onClick={() => setRisk("Medium")}
-                className={`flex-1 py-2 rounded-md font-semibold ${risk === "Medium" ? "bg-amber-600 text-white" : "bg-gray-700 text-gray-300 hover:bg-gray-600"}`}
-              >
-                Medium Risk
-              </button>
-            </div>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-fade-in-up">
+      <div className="bg-gray-800/50 p-6 rounded-2xl shadow-lg border border-gray-700 backdrop-blur-sm">
+        <h2 className="text-2xl font-bold text-white mb-6">1. Upload & Configure</h2>
+        <ImageUploader previewUrl={preview} onChange={handleFile} />
+        <div className="space-y-4 mt-4">
+          <input
+            type="text"
+            placeholder="Pair (e.g., XAUUSD)"
+            value={pair}
+            onChange={(e) => setPair(e.target.value)}
+            className="w-full bg-gray-900 border border-gray-600 text-white rounded-lg px-4 py-3 focus:ring-2 focus:ring-amber-500"
+          />
+          <input
+            type="text"
+            placeholder="Timeframe (e.g., H1, H4)"
+            value={timeframe}
+            onChange={(e) => setTimeframe(e.target.value)}
+            className="w-full bg-gray-900 border border-gray-600 text-white rounded-lg px-4 py-3 focus:ring-2 focus:ring-amber-500"
+          />
+          <div className="flex gap-2 mt-3">
             <button
-              onClick={handleAnalyze}
-              disabled={isLoading}
-              className={`w-full font-bold py-3 px-4 rounded-lg transition-all duration-300 ${
-                isLoading
-                  ? "bg-gray-600 cursor-wait"
-                  : "bg-amber-600 hover:bg-amber-700 transform hover:-translate-y-1 shadow-lg shadow-amber-500/30"
-              }`}
+              onClick={() => setRisk("Low")}
+              className={`flex-1 py-2 rounded-md font-semibold ${risk === "Low" ? "bg-amber-600 text-white" : "bg-gray-700 text-gray-300 hover:bg-gray-600"}`}
             >
-              {isLoading ? "Analyzing..." : "Analyze Chart"}
+              Low Risk
+            </button>
+            <button
+              onClick={() => setRisk("Medium")}
+              className={`flex-1 py-2 rounded-md font-semibold ${risk === "Medium" ? "bg-amber-600 text-white" : "bg-gray-700 text-gray-300 hover:bg-gray-600"}`}
+            >
+              Medium Risk
             </button>
           </div>
-        </div>
 
-        <div className="bg-gray-800/50 p-6 rounded-2xl shadow-lg border border-gray-700 backdrop-blur-sm relative overflow-hidden">
-          <h2 className="text-2xl font-bold text-white mb-6">2. AI Analysis</h2>
-          {isLoading && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 0.05 }}
-              className="absolute inset-0 bg-gradient-to-br from-amber-500 via-yellow-300 to-amber-600 blur-3xl animate-pulse"
-            />
+          <button
+            onClick={handleAnalyze}
+            disabled={isLoading}
+            className={`w-full font-bold py-3 px-4 rounded-lg transition-all duration-300 ${
+              isLoading
+                ? "bg-gray-600 cursor-wait"
+                : "bg-amber-600 hover:bg-amber-700 transform hover:-translate-y-1 shadow-lg shadow-amber-500/30"
+            }`}
+          >
+            {isLoading ? "Analyzing..." : "Analyze Chart"}
+          </button>
+
+          {/* 🟢 Tombol Load Last Analysis */}
+          {localStorage.getItem("analysisResult") && (
+            <button
+              onClick={handleLoadLast}
+              className="w-full font-semibold py-2 px-4 mt-3 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-200 transition-all"
+            >
+              Load Last Analysis
+            </button>
           )}
-          <div className="min-h-[400px] flex flex-col justify-center items-center relative z-10 text-center">
-            {isLoading && <Loader />}
-            {error && <div className="text-red-400 bg-red-900/40 p-4 rounded-lg text-center shadow-md">{error}</div>}
-            {!isLoading && !error && analysis && <AnalysisResult analysis={analysis} />}
-            {!isLoading && !error && !analysis && (
-              <p className="text-gray-400">Upload chart dan klik "Analyze Chart" untuk memulai analisis AI.</p>
-            )}
-          </div>
         </div>
       </div>
-    </>
+
+      <div className="bg-gray-800/50 p-6 rounded-2xl shadow-lg border border-gray-700 backdrop-blur-sm relative overflow-hidden">
+        <h2 className="text-2xl font-bold text-white mb-6">2. AI Analysis</h2>
+        {isLoading && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.05 }}
+            className="absolute inset-0 bg-gradient-to-br from-amber-500 via-yellow-300 to-amber-600 blur-3xl animate-pulse"
+          />
+        )}
+        <div className="min-h-[400px] flex flex-col justify-center items-center relative z-10 text-center">
+          {isLoading && <Loader />}
+          {error && <div className="text-red-400 bg-red-900/40 p-4 rounded-lg text-center shadow-md">{error}</div>}
+          {!isLoading && !error && analysis && <AnalysisResult analysis={analysis} />}
+          {!isLoading && !error && !analysis && (
+            <p className="text-gray-400">Upload chart dan klik "Analyze Chart" untuk memulai analisis AI.</p>
+          )}
+        </div>
+      </div>
+    </div>
   );
 };
 
