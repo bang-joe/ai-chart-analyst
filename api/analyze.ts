@@ -26,14 +26,14 @@ async function generateWithFallback(
 
     try {
       const genAI = new GoogleGenerativeAI(key);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
       // Timeout otomatis biar gak delay lama (15 detik)
       const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error("⏱️ AI timeout")), 15000)
       );
 
-      // ✅ Versi baru tanpa 'role'
+      // ✅ Format baru tanpa 'role'
       const aiResponse = model.generateContent([
         { text: prompt },
         {
@@ -56,11 +56,32 @@ async function generateWithFallback(
     } catch (err: any) {
       console.warn(`⚠️ Gemini key [${i + 1}] failed: ${err.message}`);
       lastError = err;
+
+      // ⏳ Delay antar key (biar gak overload bareng)
+      await new Promise((res) => setTimeout(res, 1500));
     }
   }
 
+  // 🔁 Retry sekali lagi seluruh loop setelah cooldown 3 detik
+  console.log("🔁 Retrying all keys after short cooldown...");
+  await new Promise((res) => setTimeout(res, 3000));
+
+  for (let i = 0; i < GEMINI_KEYS.length; i++) {
+    try {
+      const key = GEMINI_KEYS[i];
+      const genAI = new GoogleGenerativeAI(key);
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+      const result = await model.generateContent([{ text: prompt }]);
+      const text = result?.response?.text?.();
+      if (text && text.trim()) {
+        console.log(`✅ Success on retry with key [${i + 1}]`);
+        return text;
+      }
+    } catch (_) {}
+  }
+
   console.error("❌ All Gemini keys failed:", lastError);
-  throw new Error("All Gemini API keys failed or overloaded. Please try again later.");
+  throw new Error("Server overload atau gagal merespons. Coba lagi nanti.");
 }
 
 // ⚙️ Handler utama (pakai Web API style untuk Vercel)
