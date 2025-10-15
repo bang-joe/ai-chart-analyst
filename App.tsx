@@ -1,4 +1,4 @@
-// File: App.tsx (FINAL PATCHED VERSION - SESSION AUTO REFRESH FIX)
+// File: App.tsx (FINAL FIXED PARSER + SESSION AUTO REFRESH)
 
 import 'react-toastify/dist/ReactToastify.css';
 import { ToastContainer, toast } from 'react-toastify';
@@ -12,10 +12,10 @@ import type { Analysis } from "./types";
 import { Footer } from "./components/Footer";
 import AdminPanel from "./components/AdminPanel";
 import { motion } from "framer-motion";
-import { supabase } from "./utils/supabase-client"; // ✅ pastikan ini ada
+import { supabase } from "./utils/supabase-client";
 import { AnalysisResult } from './components/AnalysisResult';
 
-// 🧩 Parsing hasil analisis AI (versi rapi + fix duplikasi & Strategi)
+// 🧩 Parsing hasil analisis AI (versi fleksibel + aman)
 const parseAnalysisText = (
   text: string,
   currentRiskProfile: "Low" | "Medium"
@@ -26,20 +26,20 @@ const parseAnalysisText = (
 
     const aksi =
       text.match(/Aksi\s*[:\-]?\s*(Buy|Sell)/i)?.[1] || "Buy";
+
+    // ✅ Dukung semua variasi entry: Entry, Buy Limit, Sell Stop, dll.
     const entry =
-      text.match(/Entry\s*[:\-]?\s*([\d.,]+)/i)?.[1] || "-";
+      text.match(/\b(?:Entry|Buy\s+Limit|Sell\s+Limit|Buy\s+Stop|Sell\s+Stop)\s*[@:\-]?\s*([\d.,]+)/i)?.[1] || "-";
+
+    // ✅ Tangkap variasi Stop Loss, SL, atau Stop saja
     const sl =
-      text.match(/Stop\s*Loss\s*[:\-]?\s*([\d.,]+)/i)?.[1] ||
-      text.match(/\bSL\s*[:\-]?\s*([\d.,]+)/i)?.[1] || "-";
+      text.match(/\b(?:Stop\s*Loss|SL|Stop)\s*[@:\-]?\s*([\d.,]+)/i)?.[1] || "-";
 
-    // 🎯 Ambil semua Take Profit
-    const tp1 = text.match(/\bTake Profit 1\s*[:\-]?\s*([\d.,]+)/i);
-    const tp2 = text.match(/\bTake Profit 2\s*[:\-]?\s*([\d.,]+)/i);
-    const tp3 = text.match(/\bTake Profit 3\s*[:\-]?\s*([\d.,]+)/i);
-
-    const tps = [tp1, tp2, tp3]
-      .filter((m): m is RegExpMatchArray => Boolean(m && m[1]))
-      .map((m) => clean(m[1]));
+    // ✅ Ambil semua Take Profit, berapapun jumlahnya
+    const tpMatches = Array.from(
+      text.matchAll(/\bTake\s*Profit\s*\d*\s*[@:\-]?\s*([\d.,]+)/gi)
+    );
+    const tps = tpMatches.map((m) => clean(m[1]));
 
     const trend =
       text.match(/\bTrend Utama\s*[:\-]?\s*(.*)/i)?.[1] || "-";
@@ -50,7 +50,7 @@ const parseAnalysisText = (
     const indicators =
       text.match(/\bIndikator\s*[:\-]?\s*(.*)/i)?.[1] || "-";
 
-    // 🧼 Fix bagian Penjelasan Analisa biar gak duplikat "& Strategi"
+    // 🧼 Bersihkan bagian Penjelasan Analisa & Strategi
     let explanation =
       text.match(/\bPenjelasan Analisa\s*&?\s*Strategi\s*[:\-]?\s*([\s\S]*)/i)
         ?.[1] || "-";
@@ -91,7 +91,7 @@ const parseAnalysisText = (
   }
 };
 
-// 🧠 Komponen utama aplikasi (AI Analyzer)
+// 🧠 Komponen utama aplikasi
 const MainApp: React.FC = () => {
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [mimeType, setMimeType] = useState<string>("");
@@ -103,7 +103,7 @@ const MainApp: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
 
-  // 🟡 Restore state dari localStorage
+  // Restore state
   useEffect(() => {
     const savedPair = localStorage.getItem("pair");
     const savedTimeframe = localStorage.getItem("timeframe");
@@ -118,7 +118,7 @@ const MainApp: React.FC = () => {
     if (savedPreview) setPreview(savedPreview);
   }, []);
 
-  // 🟡 Simpan otomatis setiap perubahan
+  // Save otomatis
   useEffect(() => localStorage.setItem("pair", pair), [pair]);
   useEffect(() => localStorage.setItem("timeframe", timeframe), [timeframe]);
   useEffect(() => localStorage.setItem("risk", risk), [risk]);
@@ -316,7 +316,6 @@ const App: React.FC = () => {
   const { user, loading } = useAuth();
   const [showAdminPanel, setShowAdminPanel] = useState(false);
 
-  // 🩵 Tambahan penting: pantau perubahan sesi Supabase
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "TOKEN_REFRESHED") console.log("🔁 Token refreshed successfully.");
