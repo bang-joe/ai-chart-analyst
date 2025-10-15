@@ -1,10 +1,9 @@
-// File: context/AuthContext.tsx (FINAL FIX – Auto Session, No Blank, Admin Safe)
+// File: context/AuthContext.tsx (FINAL FIX – Auto Sync + Persist Login State)
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import { supabase } from "../utils/supabase-client";
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 
-// ✅ Struktur user tidak diubah
 interface User {
   uid: string;
   name: string;
@@ -39,95 +38,93 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // ✅ Auto load session Supabase (biar gak blank screen)
+  // 🧠 Sync session Supabase → React state + localStorage
   useEffect(() => {
-    const initSession = async () => {
+    const init = async () => {
       try {
         const { data } = await supabase.auth.getSession();
-        const sessionUser = data?.session?.user;
+        const session = data?.session;
 
-        if (sessionUser) {
-          const local = localStorage.getItem("authUser");
-          const parsed = local ? JSON.parse(local) : {};
+        if (session?.user) {
+          const existing = localStorage.getItem("authUser");
+          const merged = existing ? JSON.parse(existing) : {};
 
-          const mergedUser = {
-            ...parsed,
-            email: sessionUser.email,
-            uid: sessionUser.id,
+          const sessionUser = {
+            ...merged,
+            uid: session.user.id,
+            email: session.user.email,
           };
 
-          localStorage.setItem("authUser", JSON.stringify(mergedUser));
-          setUser(mergedUser);
+          localStorage.setItem("authUser", JSON.stringify(sessionUser));
+          setUser(sessionUser as User);
+        } else {
+          const storedUser = localStorage.getItem("authUser");
+          if (storedUser) setUser(JSON.parse(storedUser));
         }
       } catch (err) {
-        console.error("❌ Gagal ambil session Supabase:", err);
+        console.error("❌ Session init error:", err);
       } finally {
         setLoading(false);
       }
     };
 
-    initSession();
+    init();
 
-    // 🧠 Listener perubahan login/logout dari Supabase
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(
+    // 🔄 Listen Supabase auth state change
+    const { data: listener } = supabase.auth.onAuthStateChange(
       (_event: AuthChangeEvent, session: Session | null) => {
         if (session?.user) {
-          const u = {
-            email: session.user.email,
+          const sessionUser = {
             uid: session.user.id,
+            email: session.user.email,
           };
-          localStorage.setItem("authUser", JSON.stringify(u));
-          setUser(u as any);
+          localStorage.setItem("authUser", JSON.stringify(sessionUser));
+          setUser(sessionUser as User);
         } else {
           localStorage.removeItem("authUser");
           setUser(null);
         }
-        setLoading(false);
       }
     );
 
-    return () => {
-      subscription.unsubscribe();
-    };
+    return () => listener.subscription.unsubscribe();
   }, []);
 
-  // 🧩 Load dari localStorage untuk auto-login
+  // ✅ Restore local user untuk auto-login
   useEffect(() => {
-    try {
-      const storedUser = localStorage.getItem("authUser");
-      if (storedUser) {
-        const parsedUser = JSON.parse(storedUser) as User;
-        const withAdminFlag = {
-          ...parsedUser,
+    const restore = async () => {
+      const stored = localStorage.getItem("authUser");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        const adminUser = {
+          ...parsed,
           isAdmin:
-            parsedUser.isAdmin ||
-            parsedUser.email === "joeuma929@gmail.com" || // superadmin
-            parsedUser.planType === "ADMIN" ||
-            parsedUser.membership === "Lifetime Access",
+            parsed.isAdmin ||
+            parsed.email === "joeuma929@gmail.com" ||
+            parsed.planType === "ADMIN" ||
+            parsed.membership === "Lifetime Access",
         };
-        setUser(withAdminFlag);
+        setUser(adminUser);
       }
-    } catch (error) {
-      console.error("❌ Gagal parse user dari localStorage:", error);
-      localStorage.removeItem("authUser");
-    } finally {
       setLoading(false);
-    }
+    };
+
+    // Delay kecil agar Supabase client siap dulu
+    const timer = setTimeout(restore, 400);
+    return () => clearTimeout(timer);
   }, []);
 
-  // 🔑 Login
+  // 🔑 Login handler
   const login = async (email: string, code: string) => {
     try {
-      const response = await fetch("/api/auth", {
+      const res = await fetch("/api/auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, activationCode: code }),
       });
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || "Login gagal.");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Login gagal.");
 
       const userData: User = data.user;
       const finalUser: User = {
@@ -142,7 +139,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem("authUser", JSON.stringify(finalUser));
       setUser(finalUser);
       toast.success("✅ Login berhasil!");
-      window.location.reload();
     } catch (error: any) {
       console.error("Login failed:", error);
       toast.error(error.message || "Terjadi kesalahan saat login.");
@@ -150,18 +146,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // 🚪 Logout
+  // 🚪 Logout handler
   const logout = () => {
     localStorage.removeItem("authUser");
     setUser(null);
     toast.info("Anda telah logout.");
-    window.location.reload();
+    supabase.auth.signOut();
   };
 
-  // 🌀 Fallback UI agar gak blank waktu loading
+  // 🌀 Anti-blank loading screen
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-900 text-gray-300">
+      <div className="flex items-center justify-center min-h-screen bg-gray-900 text-gray-400">
         <div className="animate-pulse text-lg font-semibold">
           🔄 Memuat aplikasi...
         </div>
