@@ -4,6 +4,7 @@ import path from "path";
 
 export default defineConfig({
   plugins: [react()],
+  base: "/", // ✅ tambahkan ini untuk cegah file JS 404 di domain custom
   build: {
     outDir: "dist",
     sourcemap: false,

@@ -1,10 +1,10 @@
 // File: context/AuthContext.tsx (FINAL FIX – Auto Session, No Blank, Admin Safe)
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { toast } from "react-toastify";
-import { supabase } from "../utils/supabase-client"; // ✅ path sesuai struktur lo
-import type { AuthChangeEvent, Session } from "@supabase/supabase-js"; // ✅ fix TS types
+import { supabase } from "../utils/supabase-client";
+import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 
-// ✅ Interface User (tidak diubah)
+// ✅ Struktur user tidak diubah
 interface User {
   uid: string;
   name: string;
@@ -39,21 +39,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // ✅ Sinkronisasi Supabase session agar tidak blank
+  // ✅ Auto load session Supabase (biar gak blank screen)
   useEffect(() => {
     const initSession = async () => {
       try {
         const { data } = await supabase.auth.getSession();
-        const activeUser = data.session?.user;
+        const sessionUser = data?.session?.user;
 
-        if (activeUser) {
-          const storedUser = localStorage.getItem("authUser");
-          const parsedUser = storedUser ? JSON.parse(storedUser) : {};
+        if (sessionUser) {
+          const local = localStorage.getItem("authUser");
+          const parsed = local ? JSON.parse(local) : {};
 
           const mergedUser = {
-            ...parsedUser,
-            email: activeUser.email,
-            uid: activeUser.id,
+            ...parsed,
+            email: sessionUser.email,
+            uid: sessionUser.id,
           };
 
           localStorage.setItem("authUser", JSON.stringify(mergedUser));
@@ -68,19 +68,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     initSession();
 
-    // 🧠 Listener Supabase: auto update saat login/logout
+    // 🧠 Listener perubahan login/logout dari Supabase
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(
       (_event: AuthChangeEvent, session: Session | null) => {
         if (session?.user) {
-          const newUser = {
-            ...session.user,
+          const u = {
             email: session.user.email,
             uid: session.user.id,
           };
-          localStorage.setItem("authUser", JSON.stringify(newUser));
-          setUser(newUser as any);
+          localStorage.setItem("authUser", JSON.stringify(u));
+          setUser(u as any);
         } else {
           localStorage.removeItem("authUser");
           setUser(null);
@@ -89,17 +88,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
-  // 🧩 Load session dari localStorage
+  // 🧩 Load dari localStorage untuk auto-login
   useEffect(() => {
     try {
       const storedUser = localStorage.getItem("authUser");
       if (storedUser) {
         const parsedUser = JSON.parse(storedUser) as User;
-
-        // ✅ Fallback admin check
         const withAdminFlag = {
           ...parsedUser,
           isAdmin:
@@ -108,7 +107,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             parsedUser.planType === "ADMIN" ||
             parsedUser.membership === "Lifetime Access",
         };
-
         setUser(withAdminFlag);
       }
     } catch (error) {
@@ -119,7 +117,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  // 🧠 Login
+  // 🔑 Login
   const login = async (email: string, code: string) => {
     try {
       const response = await fetch("/api/auth", {
@@ -129,14 +127,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Login gagal.");
-      }
+      if (!response.ok) throw new Error(data.message || "Login gagal.");
 
       const userData: User = data.user;
-
-      // ✅ Flag admin otomatis
       const finalUser: User = {
         ...userData,
         isAdmin:
@@ -164,6 +157,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     toast.info("Anda telah logout.");
     window.location.reload();
   };
+
+  // 🌀 Fallback UI agar gak blank waktu loading
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-900 text-gray-300">
+        <div className="animate-pulse text-lg font-semibold">
+          🔄 Memuat aplikasi...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <AuthContext.Provider value={{ user, loading, login, logout }}>
