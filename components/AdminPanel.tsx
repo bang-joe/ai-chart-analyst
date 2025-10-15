@@ -1,10 +1,9 @@
-// File: components/AdminPanel.tsx (FINAL FIX - ADMIN SECURE + ACTIVITY LOGS)
+// File: components/AdminPanel.tsx (FINAL CLEAN VERSION - NO ADMIN LOGS)
 
 import React, { useState, useEffect, useCallback } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { motion } from "framer-motion";
 import { toast } from "react-toastify";
-import AdminLogs from "./AdminLogs"; // ✅ Tambahkan import log panel
 
 interface User {
   id: number;
@@ -81,7 +80,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     const { data, error } = await supabase
       .from("members")
       .select("id, uid, name, email, activation_code, is_admin, is_active, membership_type, plan_type, join_date, membership_expires_at")
-      .order("created_at", { ascending: false });
+      .order("id", { ascending: false });
 
     if (error) {
       toast.error("Gagal mengambil data user: " + error.message);
@@ -96,6 +95,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     fetchUsers();
   }, [fetchUsers]);
 
+  // ➕ Tambah User
   const handleAddUser = async () => {
     const isAllowed = await verifyAdmin();
     if (!isAllowed) return;
@@ -126,6 +126,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     }
   };
 
+  // 🗑️ Hapus User
   const handleDeleteUser = async (id: number) => {
     const isAllowed = await verifyAdmin();
     if (!isAllowed) return;
@@ -140,6 +141,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     }
   };
 
+  // 🔁 Toggle admin/aktif
   const handleToggleField = async (
     id: number,
     field: "is_admin" | "is_active",
@@ -179,7 +181,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
         </button>
 
         <h2 className="text-2xl font-bold mb-6 text-white text-center">
-          Admin Panel – User Management (Supabase)
+          Admin Panel – User Management
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -268,11 +270,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
               </div>
             )}
           </div>
-        </div>
-
-        {/* 🧾 Tambahan Activity Log Section */}
-        <div className="mt-10 border-t border-gray-700 pt-6">
-          <AdminLogs />
         </div>
       </div>
     </motion.div>
