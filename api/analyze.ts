@@ -1,3 +1,8 @@
+// 🧩 Paksa Vercel pakai Node.js runtime (bukan Edge)
+export const config = {
+  runtime: "nodejs",
+};
+
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // 🔑 Ambil semua key Gemini dari environment Vercel
@@ -12,7 +17,7 @@ if (GEMINI_KEYS.length === 0) {
   throw new Error("❌ No Gemini API keys found in Vercel environment!");
 }
 
-// 🧩 Fungsi untuk nyoba beberapa key sampai berhasil
+// 🧠 Fungsi fallback multi-key dengan anti-delay
 async function generateWithFallback(
   prompt: string,
   imageBase64: string,
@@ -26,7 +31,9 @@ async function generateWithFallback(
 
     try {
       const genAI = new GoogleGenerativeAI(key);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+      const model = genAI.getGenerativeModel({
+        model: "gemini-1.5-flash-latest",
+      });
 
       // Timeout otomatis biar gak delay lama (15 detik)
       const timeoutPromise = new Promise((_, reject) =>
@@ -57,12 +64,12 @@ async function generateWithFallback(
       console.warn(`⚠️ Gemini key [${i + 1}] failed: ${err.message}`);
       lastError = err;
 
-      // ⏳ Delay antar key (biar gak overload bareng)
+      // ⏳ Delay antar key biar gak overload bareng
       await new Promise((res) => setTimeout(res, 1500));
     }
   }
 
-  // 🔁 Retry sekali lagi seluruh loop setelah cooldown 3 detik
+  // 🔁 Retry sekali lagi seluruh key setelah cooldown 3 detik
   console.log("🔁 Retrying all keys after short cooldown...");
   await new Promise((res) => setTimeout(res, 3000));
 
@@ -70,7 +77,9 @@ async function generateWithFallback(
     try {
       const key = GEMINI_KEYS[i];
       const genAI = new GoogleGenerativeAI(key);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+      const model = genAI.getGenerativeModel({
+        model: "gemini-1.5-flash-latest",
+      });
       const result = await model.generateContent([{ text: prompt }]);
       const text = result?.response?.text?.();
       if (text && text.trim()) {
@@ -84,7 +93,7 @@ async function generateWithFallback(
   throw new Error("Server overload atau gagal merespons. Coba lagi nanti.");
 }
 
-// ⚙️ Handler utama (pakai Web API style untuk Vercel)
+// ⚙️ Handler utama untuk API
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
@@ -103,7 +112,7 @@ export default async function handler(req: Request): Promise<Response> {
     });
   }
 
-  // 🎯 Prompt profesional, ringkas, dan cepat
+  // 🎯 Prompt profesional & cepat
   const prompt = `
 Kamu adalah seorang analis teknikal profesional dengan pengalaman lebih dari 10 tahun di pasar emas dan forex.
 Analisa chart ${pair} timeframe ${timeframe} dengan fokus pada strategi low risk dan efisiensi tinggi.
@@ -129,7 +138,8 @@ Gunakan bahasa profesional dan tidak lebih dari 200 kata.
     console.error("❌ AI Error:", error);
     return new Response(
       JSON.stringify({
-        error: error.message || "Failed to analyze chart. Please try again later.",
+        error:
+          error.message || "Failed to analyze chart. Please try again later.",
       }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
