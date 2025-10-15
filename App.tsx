@@ -15,7 +15,7 @@ import { motion } from "framer-motion";
 import { supabase } from "./utils/supabase-client";
 import { AnalysisResult } from './components/AnalysisResult';
 
-// 🧩 Parsing hasil analisis AI (versi fleksibel + aman)
+// 🧩 Parsing hasil analisis AI (bersih & fleksibel, pisah rekomendasi)
 const parseAnalysisText = (
   text: string,
   currentRiskProfile: "Low" | "Medium"
@@ -27,15 +27,15 @@ const parseAnalysisText = (
     const aksi =
       text.match(/Aksi\s*[:\-]?\s*(Buy|Sell)/i)?.[1] || "Buy";
 
-    // ✅ Dukung semua variasi entry: Entry, Buy Limit, Sell Stop, dll.
+    // ✅ Tangkap semua variasi gaya entry (Entry, Buy Limit, Sell Stop, dll.)
     const entry =
       text.match(/\b(?:Entry|Buy\s+Limit|Sell\s+Limit|Buy\s+Stop|Sell\s+Stop)\s*[@:\-]?\s*([\d.,]+)/i)?.[1] || "-";
 
-    // ✅ Tangkap variasi Stop Loss, SL, atau Stop saja
+    // ✅ Tangkap SL dari berbagai format
     const sl =
       text.match(/\b(?:Stop\s*Loss|SL|Stop)\s*[@:\-]?\s*([\d.,]+)/i)?.[1] || "-";
 
-    // ✅ Ambil semua Take Profit, berapapun jumlahnya
+    // ✅ Tangkap semua Take Profit
     const tpMatches = Array.from(
       text.matchAll(/\bTake\s*Profit\s*\d*\s*[@:\-]?\s*([\d.,]+)/gi)
     );
@@ -50,13 +50,17 @@ const parseAnalysisText = (
     const indicators =
       text.match(/\bIndikator\s*[:\-]?\s*(.*)/i)?.[1] || "-";
 
-    // 🧼 Bersihkan bagian Penjelasan Analisa & Strategi
+    // 🧼 Ambil penjelasan strategi tapi bersihkan baris Entry/SL/TP dari dalamnya
     let explanation =
       text.match(/\bPenjelasan Analisa\s*&?\s*Strategi\s*[:\-]?\s*([\s\S]*)/i)
         ?.[1] || "-";
     explanation = clean(explanation)
       .replace(/^&?\s*Strategi[:\s]*/i, "")
       .replace(/&\s*Strategi:?/gi, "")
+      .replace(/Entry\s*[:@\-]?.*/gi, "")
+      .replace(/Stop\s*Loss\s*[:@\-]?.*/gi, "")
+      .replace(/Take\s*Profit\s*\d*\s*[:@\-]?.*/gi, "")
+      .replace(/TP\d*[:@\-]?.*/gi, "")
       .trim();
 
     if (!aksi || !entry || !sl || tps.length === 0) {
@@ -71,13 +75,13 @@ const parseAnalysisText = (
       supportResistance: clean(supportResistance),
       candlestick: clean(candlestick),
       indicators: clean(indicators),
-      explanation: explanation || "-",
+      explanation: explanation || "-", // ✅ sudah bersih tanpa rekomendasi angka
       recommendation: {
         action: clean(aksi) as "Buy" | "Sell",
         entry: clean(entry),
         entryRationale: "",
         stopLoss: clean(sl),
-        takeProfit: tps,
+        takeProfit: tps.length > 0 ? tps : ["-"],
         riskProfile: currentRiskProfile,
       },
     };
@@ -90,6 +94,7 @@ const parseAnalysisText = (
     );
   }
 };
+;
 
 // 🧠 Komponen utama aplikasi
 const MainApp: React.FC = () => {
