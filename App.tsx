@@ -1,10 +1,9 @@
-// File: components/AdminPanel.tsx (FINAL NON-AUTH SAFE VERSION)
-// 🚀 Versi tanpa Supabase Auth – langsung akses tabel members, aman & stabil
+// File: components/AdminPanel.tsx (FINAL FIX - DENGAN TOMBOL KEMBALI)
 
 import React, { useState, useEffect, useCallback } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from '@supabase/supabase-js';
 import { motion } from "framer-motion";
-import { toast } from "react-toastify";
+import { toast } from 'react-toastify';
 
 interface User {
   id: number;
@@ -38,63 +37,42 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     name: "",
     email: "",
     activation_code: "",
-    membership_type: "VIP",
-    plan_type: "USER",
-    is_admin: false,
+    membership_type: "Lifetime Access",
+    plan_type: "ADMIN",
+    is_admin: true,
     is_active: true,
     uid: crypto.randomUUID(),
     join_date: new Date().toISOString(),
     membership_expires_at: null,
   });
 
-  // ✅ Cek admin via localStorage (diset waktu login aktivasi)
-  const verifyAdmin = useCallback(() => {
-    const adminEmail = localStorage.getItem("admin_email");
-    const allowedAdmin = "joeuma929@gmail.com"; // ganti email admin utama lo di sini
-
-    if (adminEmail !== allowedAdmin) {
-      toast.error("🚫 Akses ditolak. Anda bukan admin.");
-      onClose();
-      return false;
-    }
-    return true;
-  }, [onClose]);
-
-  // 🔁 Ambil semua user
   const fetchUsers = useCallback(async () => {
-    if (!verifyAdmin()) return;
     setLoading(true);
-
     const { data, error } = await supabase
-      .from("members")
-      .select(
-        "id, uid, name, email, activation_code, is_admin, is_active, membership_type, plan_type, join_date, membership_expires_at"
-      )
-      .order("id", { ascending: true });
+      .from('members')
+      .select('*')
+      .order('created_at', { ascending: false });
 
     if (error) {
-      console.error("❌ Gagal mengambil data user:", error.message);
-      toast.error("Gagal memuat data user.");
+      toast.error("Gagal mengambil data user: " + error.message);
       setUsers([]);
     } else {
       setUsers(data as User[]);
     }
-
     setLoading(false);
-  }, [verifyAdmin]);
+  }, []);
 
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
 
   const handleAddUser = async () => {
-    if (!verifyAdmin()) return;
     if (!newUser.name || !newUser.email || !newUser.activation_code) {
       toast.warn("⚠️ Nama, Email, dan Kode wajib diisi!");
       return;
     }
 
-    const { error } = await supabase.from("members").insert([{ ...newUser }]);
+    const { error } = await supabase.from('members').insert([{ ...newUser }]);
     if (error) {
       toast.error("❌ Gagal menambahkan user: " + error.message);
     } else {
@@ -103,9 +81,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
         name: "",
         email: "",
         activation_code: "",
-        membership_type: "VIP",
-        plan_type: "USER",
-        is_admin: false,
+        membership_type: "Lifetime Access",
+        plan_type: "ADMIN",
+        is_admin: true,
         is_active: true,
         uid: crypto.randomUUID(),
         join_date: new Date().toISOString(),
@@ -116,10 +94,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   };
 
   const handleDeleteUser = async (id: number) => {
-    if (!verifyAdmin()) return;
-    if (!confirm("Yakin ingin menghapus user ini?")) return;
-
-    const { error } = await supabase.from("members").delete().eq("id", id);
+    if (!confirm("Yakin ingin menghapus user ini? Aksi ini tidak bisa dibatalkan.")) return;
+    const { error } = await supabase.from('members').delete().eq('id', id);
     if (error) {
       toast.error("❌ Gagal menghapus user: " + error.message);
     } else {
@@ -133,12 +109,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     field: "is_admin" | "is_active",
     currentValue: boolean
   ) => {
-    if (!verifyAdmin()) return;
-
     const { error } = await supabase
-      .from("members")
+      .from('members')
       .update({ [field]: !currentValue })
-      .eq("id", id);
+      .eq('id', id);
 
     if (error) {
       toast.error("❌ Gagal memperbarui status user.");
@@ -153,10 +127,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/70 backdrop-blur-md flex justify-center items-center z-50 p-4 overflow-y-auto"
+      className="fixed inset-0 bg-black/70 backdrop-blur-md flex justify-center items-center z-50 p-4"
     >
       <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-6xl shadow-lg relative text-gray-200">
-        {/* Tombol kembali */}
+
+        {/* ✳️ Tombol Close Panel */}
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-gray-300 hover:text-white text-xl font-bold bg-gray-800/80 px-3 py-1 rounded-lg"
@@ -165,7 +140,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
         </button>
 
         <h2 className="text-2xl font-bold mb-6 text-white text-center">
-          Admin Panel – User Management
+          Admin Panel – User Management (Supabase)
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -192,9 +167,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
               type="text"
               placeholder="Activation Code"
               value={newUser.activation_code}
-              onChange={(e) =>
-                setNewUser({ ...newUser, activation_code: e.target.value })
-              }
+              onChange={(e) => setNewUser({ ...newUser, activation_code: e.target.value })}
               className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 mb-3"
             />
             <button
