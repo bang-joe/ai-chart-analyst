@@ -32,12 +32,12 @@ async function generateWithFallback(
         model: "gemini-1.5-flash-latest",
       });
 
-      // Timeout otomatis biar gak delay lama (15 detik)
+      // Timeout cepat (10 detik aja biar responsif)
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("⏱️ AI timeout")), 15000)
+        setTimeout(() => reject(new Error("⏱️ AI timeout")), 10000)
       );
 
-      const aiResponse = model.generateContent([
+      const aiResponsePromise = model.generateContent([
         { text: prompt },
         {
           inlineData: {
@@ -47,36 +47,37 @@ async function generateWithFallback(
         },
       ]);
 
-      const result: any = await Promise.race([aiResponse, timeoutPromise]);
+      const result: any = await Promise.race([aiResponsePromise, timeoutPromise]);
       const text = result?.response?.text?.();
 
       if (text && text.trim()) return text;
+
       throw new Error("Empty response from Gemini.");
     } catch (err: any) {
       lastError = err;
-      await new Promise((res) => setTimeout(res, 1200)); // jaga biar gak overload
+      // Tunggu 1 detik antar key supaya gak overload
+      await new Promise((r) => setTimeout(r, 1000));
     }
   }
 
-  console.error("❌ All Gemini keys failed:", lastError);
-  throw new Error("Server overload atau gagal merespons. Coba lagi nanti.");
+  throw new Error(
+    lastError?.message || "Server overload atau gagal merespons. Coba lagi nanti."
+  );
 }
 
-// ⚙️ Handler pakai Web API style (Vercel-compatible)
-export default async function handler(req: Request): Promise<Response> {
-  if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), {
-      status: 405,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-
+// ⚙️ Handler hybrid — auto deteksi format request (Node / Web)
+export default async function handler(req: any, res?: any) {
   try {
-    const body = await req.json();
+    // Deteksi tipe runtime (Next.js atau Web)
+    const body =
+      typeof req.json === "function" ? await req.json() : req.body || {};
+
     const { imageBase64, mimeType, pair, timeframe, risk } = body;
 
     if (!imageBase64 || !mimeType || !pair || !timeframe) {
-      return new Response(JSON.stringify({ error: "Missing required fields" }), {
+      const msg = JSON.stringify({ error: "Missing required fields" });
+      if (res) return res.status(400).json(JSON.parse(msg));
+      return new Response(msg, {
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
@@ -100,18 +101,21 @@ Gunakan bahasa profesional dan tidak lebih dari 200 kata.
 
     const text = await generateWithFallback(prompt, imageBase64, mimeType);
 
+    if (res) return res.status(200).json({ text });
     return new Response(JSON.stringify({ text }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
   } catch (error: any) {
     console.error("❌ AI Error:", error);
-    return new Response(
-      JSON.stringify({
-        error:
-          error.message || "Failed to analyze chart. Please try again later.",
-      }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
-    );
+    const msg = JSON.stringify({
+      error: error.message || "Failed to analyze chart. Please try again later.",
+    });
+
+    if (res) return res.status(500).json(JSON.parse(msg));
+    return new Response(msg, {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 }
