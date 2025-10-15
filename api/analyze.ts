@@ -29,7 +29,7 @@ async function generateWithFallback(
   if (imageData.length > 25_000_000)
     throw new Error("Ukuran gambar terlalu besar (>25MB).");
 
-  // Timeout naik jadi 25 detik agar aman untuk AI image processing
+  // Timeout dinaikkan agar AI punya waktu cukup memproses gambar
   const TIMEOUT_MS = 25000;
 
   for (const [i, key] of GEMINI_KEYS.entries()) {
@@ -44,7 +44,6 @@ async function generateWithFallback(
         model: "gemini-2.5-flash",
       });
 
-      // Timeout AI dengan Promise.race
       const timeoutPromise = new Promise((_, reject) =>
         setTimeout(
           () => reject(new Error("⏱️ AI timeout (terlalu lama memproses)")),
@@ -64,12 +63,15 @@ async function generateWithFallback(
         ],
       });
 
-      const result: any = await Promise.race([aiResponsePromise, timeoutPromise]);
+      const result: any = await Promise.race([
+        aiResponsePromise,
+        timeoutPromise,
+      ]);
       const text = result?.response?.text?.();
 
       if (text && text.trim()) {
         console.log(`✅ Sukses dengan key [${i + 1}]`);
-        return text;
+        return sanitizeAIOutput(text);
       }
 
       throw new Error("Empty Gemini response.");
@@ -77,7 +79,6 @@ async function generateWithFallback(
       console.error(`⚠️ Key [${i + 1}] gagal:`, err.message);
       lastError = err;
 
-      // Jika error dari API, hentikan loop
       if (
         err.message.includes("API key not valid") ||
         err.message.includes("Bad Request") ||
@@ -85,7 +86,6 @@ async function generateWithFallback(
       )
         break;
 
-      // Delay antar key 1,2 detik
       await new Promise((r) => setTimeout(r, 1200));
     }
   }
@@ -94,6 +94,23 @@ async function generateWithFallback(
     lastError?.message ||
       "Server overload atau gagal merespons. Coba lagi nanti."
   );
+}
+
+// 🧩 Fungsi auto-format hasil AI biar gak bikin frontend error
+function sanitizeAIOutput(text: string): string {
+  let output = text.trim();
+
+  if (!/Aksi:/i.test(output)) {
+    // Coba tebak dari konteks kata "Buy" atau "Sell"
+    if (/buy/i.test(output)) output = "Aksi: Buy\n" + output;
+    else if (/sell/i.test(output)) output = "Aksi: Sell\n" + output;
+  }
+
+  if (!/Entry:/i.test(output)) output += "\nEntry: -";
+  if (!/Stop\s?Loss:/i.test(output)) output += "\nStop Loss: -";
+  if (!/Take\s?Profit:/i.test(output)) output += "\nTake Profit: -";
+
+  return output;
 }
 
 // ⚙️ Handler utama
@@ -112,19 +129,20 @@ export default async function handler(req: any, res?: any) {
       });
     }
 
+    // 🔥 Prompt yang lebih terstruktur
     const prompt = `
 Kamu adalah analis teknikal profesional dengan pengalaman lebih dari 10 tahun di pasar emas dan forex.
-Analisa chart ${pair} timeframe ${timeframe} dengan fokus pada strategi efisien dan risiko rendah.
+Analisa chart ${pair} timeframe ${timeframe} dengan strategi efisien dan risiko rendah.
 
-Tuliskan hasil ringkas (maks 6 poin):
-1. Trend utama
-2. Support & Resistance penting
-3. Pola candlestick utama
-4. Indikator dan sinyal dominan
-5. Skenario entry (Buy/Sell)
-6. Rekomendasi Entry, Stop Loss, dan Take Profit (3 level)
+Tuliskan hasil analisa DALAM FORMAT TETAP seperti berikut (WAJIB ADA setiap bagian):
 
-Gunakan bahasa profesional, maksimum 200 kata.
+Aksi: (Buy atau Sell)
+Entry: (Harga entry ideal)
+Stop Loss: (Harga stop loss)
+Take Profit: (TP1, TP2, TP3)
+Analisa Singkat: (penjelasan teknikal 2-3 kalimat)
+
+Gunakan bahasa profesional, ringkas, dan maksimum 200 kata.
 `;
 
     const text = await generateWithFallback(prompt, imageBase64, mimeType);
