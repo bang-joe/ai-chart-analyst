@@ -1,10 +1,10 @@
-// File: components/AdminLogs.tsx (FINAL STABLE VERSION)
-// ✨ Menampilkan riwayat aktivitas admin (insert, update, delete) dari Supabase
+// File: components/AdminLogs.tsx (FINAL STABLE + SECURE PRODUCTION VERSION)
+// ✨ Menampilkan riwayat aktivitas admin dari Supabase (insert, update, delete)
 
 import React, { useEffect, useState, useCallback } from "react";
-import { createClient } from "@supabase/supabase-js";
 import { motion } from "framer-motion";
 import { toast } from "react-toastify";
+import { supabase } from "../utils/supabase-client"; // ✅ gunakan client tunggal dari utils
 
 interface LogEntry {
   id: number;
@@ -12,13 +12,8 @@ interface LogEntry {
   target_email: string | null;
   performed_by: string;
   performed_at: string;
-  details: any;
+  details?: Record<string, any>;
 }
-
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL!,
-  import.meta.env.VITE_SUPABASE_ANON_KEY!
-);
 
 const AdminLogs: React.FC = () => {
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -26,34 +21,41 @@ const AdminLogs: React.FC = () => {
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("admin_logs")
-      .select("*")
-      .order("performed_at", { ascending: false })
-      .limit(50); // tampilkan 50 log terakhir
 
-    if (error) {
-      console.error(error);
-      toast.error("Gagal mengambil log aktivitas admin.");
-    } else {
-      setLogs(data as LogEntry[]);
+    try {
+      const { data, error } = await supabase
+        .from("admin_logs")
+        .select("*")
+        .order("performed_at", { ascending: false })
+        .limit(50);
+
+      if (error) {
+        console.error("❌ Gagal fetch admin logs:", error.message);
+        toast.error("Gagal mengambil log aktivitas admin.");
+        setLogs([]);
+      } else {
+        setLogs(data as LogEntry[]);
+      }
+    } catch (err) {
+      console.error("❌ Error jaringan/fetch:", err);
+      toast.error("Gagal menghubungi server log.");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }, []);
 
   useEffect(() => {
     fetchLogs();
   }, [fetchLogs]);
 
-  // 🔄 Auto refresh setiap 15 detik
+  // 🔄 Auto refresh setiap 20 detik
   useEffect(() => {
-    const interval = setInterval(() => fetchLogs(), 15000);
+    const interval = setInterval(fetchLogs, 20000);
     return () => clearInterval(interval);
   }, [fetchLogs]);
 
   const getActionColor = (action: string) => {
-    switch (action.toUpperCase()) {
+    switch (action?.toUpperCase()) {
       case "INSERT":
         return "text-green-400";
       case "UPDATE":
@@ -77,9 +79,7 @@ const AdminLogs: React.FC = () => {
       </h2>
 
       {loading ? (
-        <p className="text-gray-400 text-center italic">
-          Loading logs...
-        </p>
+        <p className="text-gray-400 text-center italic">Loading logs...</p>
       ) : logs.length === 0 ? (
         <p className="text-gray-500 text-center italic">
           Belum ada aktivitas admin tercatat.
