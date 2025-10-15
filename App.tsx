@@ -1,4 +1,4 @@
-// File: App.tsx (FINAL UI FIX - LOGIN MIRIP VERSI LAMA, TANPA SUPABASE AUTH)
+// File: App.tsx (FINAL FIX TANPA SUPABASE AUTH - EMAIL + KODE AKTIVASI)
 import 'react-toastify/dist/ReactToastify.css';
 import { ToastContainer, toast } from 'react-toastify';
 import React, { useState, useEffect, useCallback } from "react";
@@ -12,7 +12,7 @@ import { motion } from "framer-motion";
 import { AnalysisResult } from './components/AnalysisResult';
 import { supabase } from "./utils/supabase-client";
 
-// --- Fungsi parsing hasil analisa AI ---
+// -------------------- Parsing AI Result --------------------
 const parseAnalysisText = (text: string, currentRiskProfile: "Low" | "Medium"): Analysis | null => {
   try {
     const extractAndClean = (m: RegExpMatchArray | null, fallback = "N/A") =>
@@ -37,8 +37,19 @@ const parseAnalysisText = (text: string, currentRiskProfile: "Low" | "Medium"): 
     if (!action || !entry || !sl || !tps.length) throw new Error("Format analisa tidak lengkap.");
 
     return {
-      trend, supportResistance: sr, candlestick: candle, indicators: indicator, explanation: explain,
-      recommendation: { action: action as 'Buy' | 'Sell', entry, entryRationale: reason, stopLoss: sl, takeProfit: tps, riskProfile: currentRiskProfile },
+      trend,
+      supportResistance: sr,
+      candlestick: candle,
+      indicators: indicator,
+      explanation: explain,
+      recommendation: {
+        action: action as 'Buy' | 'Sell',
+        entry,
+        entryRationale: reason,
+        stopLoss: sl,
+        takeProfit: tps,
+        riskProfile: currentRiskProfile,
+      },
     };
   } catch (err) {
     console.error("❌ Parse Error:", err);
@@ -46,7 +57,7 @@ const parseAnalysisText = (text: string, currentRiskProfile: "Low" | "Medium"): 
   }
 };
 
-// --- Komponen utama analisa ---
+// -------------------- Komponen Analisa --------------------
 const MainApp: React.FC = () => {
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [mimeType, setMimeType] = useState("");
@@ -124,36 +135,50 @@ const MainApp: React.FC = () => {
   );
 };
 
-// --- Halaman utama ---
+// -------------------- Komponen Utama --------------------
 const App: React.FC = () => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [showAdminPanel, setShowAdminPanel] = useState(false);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem("member_user");
+    const savedUser = localStorage.getItem("tradersxauusd_user");
     if (savedUser) setUser(JSON.parse(savedUser));
     setLoading(false);
   }, []);
 
   const handleLogin = async () => {
-    if (!code.trim()) return toast.error("Masukkan kode aktivasi!");
+    if (!email.trim() || !code.trim()) {
+      toast.error("Masukkan email dan kode aktivasi!");
+      return;
+    }
+
     setLoading(true);
-    const { data, error } = await supabase.from("members").select("*").eq("activation_code", code.trim()).single();
+
+    const { data, error } = await supabase
+      .from("members")
+      .select("*")
+      .eq("email", email.trim())
+      .eq("activation_code", code.trim())
+      .eq("is_active", true)
+      .single();
+
     if (error || !data) {
-      toast.error("Kode tidak valid!");
+      toast.error("Email atau kode aktivasi tidak valid.");
       setLoading(false);
       return;
     }
-    localStorage.setItem("member_user", JSON.stringify(data));
+
+    localStorage.setItem("tradersxauusd_user", JSON.stringify(data));
     setUser(data);
     toast.success(`Selamat datang, ${data.name}!`);
     setLoading(false);
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("member_user");
+    localStorage.removeItem("tradersxauusd_user");
     setUser(null);
     toast.info("Logout berhasil.");
   };
@@ -183,19 +208,28 @@ const App: React.FC = () => {
         </div>
       ) : (
         <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 text-gray-200">
-          <h1 className="text-4xl font-bold mb-6 text-amber-400">AI Chart Analyst</h1>
-          <p className="text-gray-400 mb-4">Masukkan kode aktivasi Anda untuk melanjutkan.</p>
+          <h1 className="text-4xl font-bold mb-6 text-amber-400">Login ke Tradersxauusd</h1>
+          <p className="text-gray-400 mb-6">Masukkan Email dan Kode Aktivasi Anda.</p>
+
+          <input
+            type="email"
+            placeholder="Email Gmail Anda"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-80 px-4 py-3 mb-3 rounded-md bg-gray-800 border border-gray-600 text-white text-center focus:ring-2 focus:ring-amber-500"
+          />
           <input
             type="text"
             placeholder="Kode Aktivasi"
             value={code}
             onChange={(e) => setCode(e.target.value)}
-            className="px-4 py-2 rounded-md bg-gray-800 border border-gray-600 text-white mb-4 focus:ring-2 focus:ring-amber-500 text-center"
+            className="w-80 px-4 py-3 mb-4 rounded-md bg-gray-800 border border-gray-600 text-white text-center focus:ring-2 focus:ring-amber-500"
           />
+
           <button
             onClick={handleLogin}
             disabled={loading}
-            className="bg-amber-600 hover:bg-amber-700 px-6 py-2 rounded-md font-semibold text-white"
+            className="bg-amber-600 hover:bg-amber-700 px-6 py-2 rounded-md font-semibold text-white transition-all"
           >
             {loading ? "Memproses..." : "Masuk"}
           </button>
