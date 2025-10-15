@@ -39,6 +39,18 @@ function initSupabase(): SupabaseClient {
     },
   });
 
+  // 🔄 Auto-refresh session listener (anti expired)
+supabase.auth.onAuthStateChange(async (event, session) => {
+  if (event === "TOKEN_REFRESHED") {
+    console.log("🔁 Token Supabase diperbarui otomatis.");
+  } else if (event === "SIGNED_OUT") {
+    console.warn("🚪 Sesi habis atau logout manual.");
+  } else if (event === "SIGNED_IN") {
+    console.log("✅ Session aktif kembali setelah refresh.");
+  }
+});
+
+
   console.log("✅ Supabase client initialized (shared instance).");
   return supabase;
 }
