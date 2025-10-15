@@ -1,9 +1,11 @@
-// File: components/AdminPanel.tsx (FINAL FIXED VERSION - SESSION SYNC + NO ADMIN LOGS)
+// File: components/AdminPanel.tsx (FINAL NON-AUTH + SAFE VERSION)
+// Tidak menggunakan Supabase Auth, langsung query ke tabel members
+// Tetap aman karena hanya admin_email yang terverifikasi bisa buka
 
 import React, { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { toast } from "react-toastify";
-import { supabase } from "../utils/supabase-client"; // ✅ gunakan instance Supabase utama
+import { createClient } from "@supabase/supabase-js";
 
 interface User {
   id: number;
@@ -25,6 +27,12 @@ interface AdminPanelProps {
   onClose: () => void;
 }
 
+// ✅ Supabase Client utama
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL!,
+  import.meta.env.VITE_SUPABASE_ANON_KEY!
+);
+
 const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,60 +49,34 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     membership_expires_at: null,
   });
 
-  // ✅ Pantau perubahan session Supabase (biar gak logout random)
-  useEffect(() => {
-    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "TOKEN_REFRESHED") {
-        console.log("🔁 Token admin diperbarui otomatis.");
-      }
-      if (event === "SIGNED_OUT" || !session) {
-        toast.error("⚠️ Sesi kadaluarsa. Silakan login ulang.");
-        onClose();
-      }
-    });
-    return () => listener.subscription.unsubscribe();
-  }, [onClose]);
+  // ✅ Cek admin via localStorage (diset waktu login aktivasi)
+  const verifyAdmin = useCallback(() => {
+    const adminEmail = localStorage.getItem("admin_email");
+    const allowedAdmin = "joeuma929@gmail.com"; // Ganti ke email admin utama
 
-  // ✅ Verifikasi hanya admin bisa buka panel ini
-  const verifyAdmin = useCallback(async () => {
-    const { data, error } = await supabase.auth.getUser();
-
-    if (error || !data?.user) {
-      toast.error("⚠️ Sesi kadaluarsa. Silakan login ulang.");
+    if (adminEmail !== allowedAdmin) {
+      toast.error("🚫 Akses ditolak. Anda bukan admin.");
       onClose();
       return false;
     }
-
-    const { data: member, error: err2 } = await supabase
-      .from("members")
-      .select("is_admin")
-      .eq("email", data.user.email)
-      .maybeSingle();
-
-    if (err2 || !member?.is_admin) {
-      toast.error("🚫 Akses ditolak. Hanya admin yang dapat mengelola data.");
-      onClose();
-      return false;
-    }
-
     return true;
   }, [onClose]);
 
   // 🔁 Ambil semua user
   const fetchUsers = useCallback(async () => {
+    if (!verifyAdmin()) return;
     setLoading(true);
-    const isAllowed = await verifyAdmin();
-    if (!isAllowed) return;
 
     const { data, error } = await supabase
       .from("members")
       .select(
         "id, uid, name, email, activation_code, is_admin, is_active, membership_type, plan_type, join_date, membership_expires_at"
       )
-      .order("id", { ascending: false });
+      .order("id", { ascending: true });
 
     if (error) {
-      toast.error("Gagal mengambil data user: " + error.message);
+      console.error("❌ Gagal mengambil data user:", error.message);
+      toast.error("Gagal memuat data user.");
       setUsers([]);
     } else {
       setUsers(data as User[]);
@@ -108,9 +90,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
 
   // ➕ Tambah User
   const handleAddUser = async () => {
-    const isAllowed = await verifyAdmin();
-    if (!isAllowed) return;
-
+    if (!verifyAdmin()) return;
     if (!newUser.name || !newUser.email || !newUser.activation_code) {
       toast.warn("⚠️ Nama, Email, dan Kode wajib diisi!");
       return;
@@ -139,10 +119,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
 
   // 🗑️ Hapus User
   const handleDeleteUser = async (id: number) => {
-    const isAllowed = await verifyAdmin();
-    if (!isAllowed) return;
+    if (!verifyAdmin()) return;
+    if (!confirm("Yakin ingin menghapus user ini?")) return;
 
-    if (!confirm("Yakin ingin menghapus user ini? Aksi ini tidak bisa dibatalkan.")) return;
     const { error } = await supabase.from("members").delete().eq("id", id);
     if (error) {
       toast.error("❌ Gagal menghapus user: " + error.message);
@@ -152,14 +131,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     }
   };
 
-  // 🔁 Toggle admin/aktif
+  // 🔁 Ubah status aktif/admin
   const handleToggleField = async (
     id: number,
     field: "is_admin" | "is_active",
     currentValue: boolean
   ) => {
-    const isAllowed = await verifyAdmin();
-    if (!isAllowed) return;
+    if (!verifyAdmin()) return;
 
     const { error } = await supabase
       .from("members")
