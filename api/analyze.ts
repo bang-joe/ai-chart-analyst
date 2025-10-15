@@ -4,7 +4,7 @@ export const config = {
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// 🔑 Ambil semua key aktif dari environment Vercel
+// 🔑 Ambil semua key aktif dari environment
 const GEMINI_KEYS: string[] = [
   process.env.GEMINI_API_KEY,
   process.env.GEMINI_KEY_1,
@@ -16,7 +16,7 @@ if (GEMINI_KEYS.length === 0) {
   throw new Error("❌ Tidak ada Gemini API key di environment.");
 }
 
-// 🧠 Coba beberapa key sampai sukses
+// 🧠 Fungsi analisa dengan fallback + timeout cerdas
 async function generateWithFallback(
   prompt: string,
   imageBase64: string,
@@ -25,9 +25,12 @@ async function generateWithFallback(
   let lastError: Error | null = null;
   const imageData = imageBase64.split(",")[1];
 
-  if (!imageData) throw new Error("Gambar tidak valid atau kosong.");
-  if (imageData.length > 20_000_000)
-    throw new Error("Ukuran gambar terlalu besar (>20MB).");
+  if (!imageData) throw new Error("Gambar tidak valid.");
+  if (imageData.length > 25_000_000)
+    throw new Error("Ukuran gambar terlalu besar (>25MB).");
+
+  // Timeout naik jadi 25 detik agar aman untuk AI image processing
+  const TIMEOUT_MS = 25000;
 
   for (const [i, key] of GEMINI_KEYS.entries()) {
     try {
@@ -38,13 +41,15 @@ async function generateWithFallback(
 
       const genAI = new GoogleGenerativeAI(key);
       const model = genAI.getGenerativeModel({
-        // ✅ Gunakan model baru yang aktif di project lo
         model: "gemini-2.5-flash",
       });
 
-      // Timeout otomatis (maks 12 detik)
+      // Timeout AI dengan Promise.race
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("⏱️ AI timeout")), 12000)
+        setTimeout(
+          () => reject(new Error("⏱️ AI timeout (terlalu lama memproses)")),
+          TIMEOUT_MS
+        )
       );
 
       const aiResponsePromise = model.generateContent({
@@ -63,7 +68,7 @@ async function generateWithFallback(
       const text = result?.response?.text?.();
 
       if (text && text.trim()) {
-        console.log(`✅ Success dengan key [${i + 1}]`);
+        console.log(`✅ Sukses dengan key [${i + 1}]`);
         return text;
       }
 
@@ -72,24 +77,26 @@ async function generateWithFallback(
       console.error(`⚠️ Key [${i + 1}] gagal:`, err.message);
       lastError = err;
 
-      // Error API fatal, hentikan loop
+      // Jika error dari API, hentikan loop
       if (
         err.message.includes("API key not valid") ||
-        err.message.includes("Error from API") ||
-        err.message.includes("Bad Request")
+        err.message.includes("Bad Request") ||
+        err.message.includes("Error from API")
       )
         break;
 
-      await new Promise((r) => setTimeout(r, 1000));
+      // Delay antar key 1,2 detik
+      await new Promise((r) => setTimeout(r, 1200));
     }
   }
 
   throw new Error(
-    lastError?.message || "Server overload atau gagal merespons. Coba lagi nanti."
+    lastError?.message ||
+      "Server overload atau gagal merespons. Coba lagi nanti."
   );
 }
 
-// ⚙️ Handler API
+// ⚙️ Handler utama
 export default async function handler(req: any, res?: any) {
   try {
     const body =
@@ -106,7 +113,7 @@ export default async function handler(req: any, res?: any) {
     }
 
     const prompt = `
-Kamu adalah analis teknikal profesional berpengalaman lebih dari 10 tahun di pasar emas & forex.
+Kamu adalah analis teknikal profesional dengan pengalaman lebih dari 10 tahun di pasar emas dan forex.
 Analisa chart ${pair} timeframe ${timeframe} dengan fokus pada strategi efisien dan risiko rendah.
 
 Tuliskan hasil ringkas (maks 6 poin):
