@@ -126,7 +126,7 @@ Support & Resistance: [level penting, misal: Support 2408, Resistance 2432]
 Pola Candlestick: [pola utama, misal: Bullish engulfing di area support]
 Indikator (MA, RSI, MACD): [sinyal indikator utama]
 Penjelasan Analisa & Strategi:
-[beri analisa logis dan strategi singkat untuk entry low-risk]
+[beri analisa logis dan strategi singkat]
 Rekomendasi Entry:
 Aksi: [Buy/Sell]
 Entry: [harga entri utama, misal: 2418.50]
