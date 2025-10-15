@@ -1,9 +1,10 @@
-// File: components/AdminPanel.tsx (FINAL FIX - DENGAN TOMBOL KEMBALI)
+// File: components/AdminPanel.tsx (FINAL FIX - ADMIN SECURE + ACTIVITY LOGS)
 
 import React, { useState, useEffect, useCallback } from "react";
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from "@supabase/supabase-js";
 import { motion } from "framer-motion";
-import { toast } from 'react-toastify';
+import { toast } from "react-toastify";
+import AdminLogs from "./AdminLogs"; // ✅ Tambahkan import log panel
 
 interface User {
   id: number;
@@ -46,12 +47,41 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     membership_expires_at: null,
   });
 
+  // ✅ Verifikasi hanya admin bisa buka panel ini
+  const verifyAdmin = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      toast.error("⚠️ Sesi kadaluarsa. Silakan login ulang.");
+      onClose();
+      return false;
+    }
+
+    const { data: member, error } = await supabase
+      .from("members")
+      .select("is_admin")
+      .eq("email", user.email)
+      .maybeSingle();
+
+    if (error || !member?.is_admin) {
+      toast.error("🚫 Akses ditolak. Hanya admin yang dapat mengelola data.");
+      onClose();
+      return false;
+    }
+
+    return true;
+  }, [onClose]);
+
+  // 🔁 Ambil semua user
   const fetchUsers = useCallback(async () => {
     setLoading(true);
+    const isAllowed = await verifyAdmin();
+    if (!isAllowed) return;
+
     const { data, error } = await supabase
-      .from('members')
-      .select('*')
-      .order('created_at', { ascending: false });
+      .from("members")
+      .select("id, uid, name, email, activation_code, is_admin, is_active, membership_type, plan_type, join_date, membership_expires_at")
+      .order("created_at", { ascending: false });
 
     if (error) {
       toast.error("Gagal mengambil data user: " + error.message);
@@ -60,19 +90,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
       setUsers(data as User[]);
     }
     setLoading(false);
-  }, []);
+  }, [verifyAdmin]);
 
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
 
   const handleAddUser = async () => {
+    const isAllowed = await verifyAdmin();
+    if (!isAllowed) return;
+
     if (!newUser.name || !newUser.email || !newUser.activation_code) {
       toast.warn("⚠️ Nama, Email, dan Kode wajib diisi!");
       return;
     }
 
-    const { error } = await supabase.from('members').insert([{ ...newUser }]);
+    const { error } = await supabase.from("members").insert([{ ...newUser }]);
     if (error) {
       toast.error("❌ Gagal menambahkan user: " + error.message);
     } else {
@@ -94,8 +127,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   };
 
   const handleDeleteUser = async (id: number) => {
+    const isAllowed = await verifyAdmin();
+    if (!isAllowed) return;
+
     if (!confirm("Yakin ingin menghapus user ini? Aksi ini tidak bisa dibatalkan.")) return;
-    const { error } = await supabase.from('members').delete().eq('id', id);
+    const { error } = await supabase.from("members").delete().eq("id", id);
     if (error) {
       toast.error("❌ Gagal menghapus user: " + error.message);
     } else {
@@ -109,10 +145,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     field: "is_admin" | "is_active",
     currentValue: boolean
   ) => {
+    const isAllowed = await verifyAdmin();
+    if (!isAllowed) return;
+
     const { error } = await supabase
-      .from('members')
+      .from("members")
       .update({ [field]: !currentValue })
-      .eq('id', id);
+      .eq("id", id);
 
     if (error) {
       toast.error("❌ Gagal memperbarui status user.");
@@ -127,7 +166,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/70 backdrop-blur-md flex justify-center items-center z-50 p-4"
+      className="fixed inset-0 bg-black/70 backdrop-blur-md flex justify-center items-center z-50 p-4 overflow-y-auto"
     >
       <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-6xl shadow-lg relative text-gray-200">
 
@@ -167,7 +206,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
               type="text"
               placeholder="Activation Code"
               value={newUser.activation_code}
-              onChange={(e) => setNewUser({ ...newUser, activation_code: e.target.value })}
+              onChange={(e) =>
+                setNewUser({ ...newUser, activation_code: e.target.value })
+              }
               className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-3 py-2 mb-3"
             />
             <button
@@ -227,6 +268,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
               </div>
             )}
           </div>
+        </div>
+
+        {/* 🧾 Tambahan Activity Log Section */}
+        <div className="mt-10 border-t border-gray-700 pt-6">
+          <AdminLogs />
         </div>
       </div>
     </motion.div>
