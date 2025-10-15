@@ -38,7 +38,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // 🧠 Sync session Supabase → React state + localStorage
+  // 🧠 Sinkronisasi session Supabase → React state + localStorage
   useEffect(() => {
     const init = async () => {
       try {
@@ -70,7 +70,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     init();
 
-    // 🔄 Listen Supabase auth state change
+    // 🔄 Supabase session listener
     const { data: listener } = supabase.auth.onAuthStateChange(
       (_event: AuthChangeEvent, session: Session | null) => {
         if (session?.user) {
@@ -90,7 +90,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => listener.subscription.unsubscribe();
   }, []);
 
-  // ✅ Restore local user untuk auto-login
+  // ✅ Restore auto-login
   useEffect(() => {
     const restore = async () => {
       const stored = localStorage.getItem("authUser");
@@ -109,7 +109,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(false);
     };
 
-    // Delay kecil agar Supabase client siap dulu
     const timer = setTimeout(restore, 400);
     return () => clearTimeout(timer);
   }, []);
@@ -154,7 +153,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     supabase.auth.signOut();
   };
 
-  // 🌀 Anti-blank loading screen
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-900 text-gray-400">

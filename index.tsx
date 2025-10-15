@@ -11,13 +11,15 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// ✅ Error Boundary supaya gak crash blank
+// ✅ Error Boundary
 const ErrorFallback: React.FC<{ error: Error }> = ({ error }) => (
   <div className="min-h-screen bg-red-900 text-white flex flex-col items-center justify-center p-8">
     <h1 className="text-3xl font-bold mb-4">❌ Render Error</h1>
-    <p className="text-lg mb-2">Aplikasi gagal dimuat. Mungkin ada masalah koneksi atau cache.</p>
+    <p className="text-lg mb-2">
+      Aplikasi gagal dimuat. Mungkin ada masalah koneksi atau cache.
+    </p>
     <pre className="mt-4 p-4 bg-red-800 text-sm rounded-lg overflow-x-auto max-w-full">
-      {error.message || 'Error tidak diketahui.'}
+      {error.message || "Error tidak diketahui."}
     </pre>
     <p className="mt-4 text-sm">Coba Hard Refresh (Ctrl + Shift + R).</p>
   </div>
@@ -31,8 +33,8 @@ class AppErrorBoundary extends React.Component<any, { hasError: boolean; error: 
   static getDerivedStateFromError(error: Error) {
     return { hasError: true, error };
   }
-  componentDidCatch(error: Error, errorInfo: any) {
-    console.error('Uncaught error:', error, errorInfo);
+  componentDidCatch(error: Error, info: any) {
+    console.error("❌ App error caught:", error, info);
   }
   render() {
     if (this.state.hasError) return <ErrorFallback error={this.state.error!} />;
@@ -40,12 +42,10 @@ class AppErrorBoundary extends React.Component<any, { hasError: boolean; error: 
   }
 }
 
-// ✅ Render utama aman
-const rootEl = document.getElementById('root');
+const rootEl = document.getElementById("root");
 if (!rootEl) throw new Error("❌ Elemen root tidak ditemukan di index.html");
 
-const root = ReactDOM.createRoot(rootEl);
-root.render(
+ReactDOM.createRoot(rootEl).render(
   <React.StrictMode>
     <AppErrorBoundary>
       <AuthProvider>

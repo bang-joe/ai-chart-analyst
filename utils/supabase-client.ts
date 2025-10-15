@@ -1,45 +1,28 @@
-// File: utils/supabase-client.ts (FINAL PRODUCTION SAFE VERSION)
+// File: utils/supabase-client.ts (FINAL SAFE + AUTO REFRESH SESSION)
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-// 🧩 Variabel lingkungan dari Vite
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL!;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY!;
 
-// ✅ Gunakan Singleton agar tidak inisialisasi ulang setiap kali file diimpor
-let supabaseClient: SupabaseClient | null = null;
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error("❌ Missing Supabase environment variables!");
+  throw new Error("Missing Supabase credentials.");
+}
 
-/**
- * Inisialisasi Supabase Client hanya sekali
- */
-function initSupabase(): SupabaseClient {
-  if (!supabaseUrl || !supabaseAnonKey) {
-    console.error("❌ Supabase env vars (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY) hilang!");
-    throw new Error("Missing Supabase credentials. Pastikan .env sudah benar.");
-  }
+// Gunakan Singleton biar gak double client
+let client: SupabaseClient | null = null;
 
-  if (!supabaseClient) {
-    supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+export const supabase = (() => {
+  if (!client) {
+    client = createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
         persistSession: true,
+        autoRefreshToken: true,
         detectSessionInUrl: true,
       },
     });
-    console.log("✅ Supabase client initialized.");
+    console.log("✅ Supabase client initialized successfully.");
   }
-
-  return supabaseClient;
-}
-
-/**
- * Helper universal untuk akses instance Supabase yang aman
- */
-export const getSupabase = (): SupabaseClient => {
-  return initSupabase();
-};
-
-// ✅ Export default instance agar kompatibel dengan semua import lama
-export const supabase = getSupabase();
-
-// Alias opsional untuk backward compatibility
-export const client = supabase;
+  return client;
+})();
