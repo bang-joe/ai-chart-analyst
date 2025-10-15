@@ -131,18 +131,21 @@ export default async function handler(req: any, res?: any) {
 
     // 🔥 Prompt yang lebih terstruktur
     const prompt = `
-Kamu adalah analis teknikal profesional dengan pengalaman lebih dari 10 tahun di pasar emas dan forex.
-Analisa chart ${pair} timeframe ${timeframe} dengan strategi efisien dan risiko rendah.
+Kamu adalah analis teknikal profesional berpengalaman 10 tahun.
+Analisa chart ${pair} timeframe ${timeframe} dengan fokus strategi efisien dan low risk.
 
-Tuliskan hasil analisa DALAM FORMAT TETAP seperti berikut (WAJIB ADA setiap bagian):
+Tulis hasil dengan format berikut (wajib lengkap):
 
 Aksi: (Buy atau Sell)
-Entry: (Harga entry ideal)
-Stop Loss: (Harga stop loss)
-Take Profit: (TP1, TP2, TP3)
-Analisa Singkat: (penjelasan teknikal 2-3 kalimat)
+Entry: (Harga ideal)
+Stop Loss: (Harga SL)
+Take Profit:
+- TP1:
+- TP2:
+- TP3:
+Analisa Singkat: (penjelasan 2–3 kalimat)
 
-Gunakan bahasa profesional, ringkas, dan maksimum 200 kata.
+Gunakan bahasa profesional ≤ 200 kata.
 `;
 
     const text = await generateWithFallback(prompt, imageBase64, mimeType);

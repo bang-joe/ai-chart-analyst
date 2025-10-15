@@ -13,57 +13,102 @@ import AdminPanel from "./components/AdminPanel";
 import { motion } from "framer-motion";
 import { AnalysisResult } from './components/AnalysisResult';
 
-// 🧩 Parsing hasil analisis AI
-const parseAnalysisText = (text: string, currentRiskProfile: "Low" | "Medium"): Analysis | null => {
+
+// 🧩 Parsing hasil analisis AI (versi final & aman untuk semua format)
+const parseAnalysisText = (
+  text: string,
+  currentRiskProfile: "Low" | "Medium"
+): Analysis | null => {
   try {
-    const extractAndClean = (matchResult: RegExpMatchArray | null, fallback: string = "N/A") => {
-      if (!matchResult || !matchResult[1]) return fallback;
-      return matchResult[1].replace(/(\n\s*\*|\*|--|`|#)/g, " ").replace(/\s+/g, " ").trim();
-    };
+    const clean = (val: string | null | undefined): string =>
+      (val || "").replace(/(\*|`|#|--)/g, "").trim();
 
-    const trendMatch = text.match(/\bTrend Utama\s*[:\s]+([\s\S]*?)(?=\n\s*\d\.|\n---|\n\s*$)/i);
-    const srMatch = text.match(/\bSupport & Resistance\s*[:\s]+([\s\S]*?)(?=\n\s*\d\.|\n---|\n\s*$)/i);
-    const candleMatch = text.match(/\bPola Candlestick\s*[:\s]+([\s\S]*?)(?=\n\s*\d\.|\n---|\n\s*$)/i);
-    const indMatch = text.match(/\bIndikator\s*[:\s]+([\s\S]*?)(?=\n\s*\d\.|\n---|\n\s*$)/i);
-    const expMatch = text.match(/\bPenjelasan Analisa & Strategi\s*[:\s]+([\s\S]*?)(?=\n\s*\d\.|\n---|\n\s*$)/i);
+    // 🎯 Aksi / Entry / SL
+    const aksi =
+      text.match(/Aksi\s*[:\-]?\s*(Buy|Sell)/i)?.[1] ||
+      text.match(/Fokus\s*(Buy|Sell)/i)?.[1] ||
+      "Buy";
 
-    const recMatch = text.match(/\bRekomendasi Entry\s*[:\s]*([\s\S]*)/i);
-    const recText = recMatch ? recMatch[1] : "";
+    const entry =
+      text.match(/Entry\s*[:\-]?\s*([\d.,]+)/i)?.[1] ||
+      text.match(/Entry\s*Buy\s*[:\-]?\s*([\d.,]+)/i)?.[1] ||
+      "-";
 
-    const actionMatch = recText.match(/\bAksi\s*:\s*(Buy|Sell)/i);
-    const entryMatch = recText.match(/\bEntry\s*:\s*([\d.,-]+)/i);
-    const reasonMatch = recText.match(/\bRasional Entry\b\s*:\s*(.*)/i);
-    const slMatch = text.match(/\bStop Loss\s*:\s*([\d.,-]+)/i);
-    const tp1 = recText.match(/\bTake Profit 1\s*:\s*([\d.,-]+)/i);
-    const tp2 = recText.match(/\bTake Profit 2\s*:\s*([\d.,-]+)/i);
-    const tp3 = recText.match(/\bTake Profit 3\s*:\s*([\d.,-]+)/i);
-    const tps = [tp1, tp2, tp3].filter(Boolean).map((m) => m![1].trim());
+    const sl =
+      text.match(/Stop\s*Loss\s*[:\-]?\s*([\d.,]+)/i)?.[1] ||
+      text.match(/\bSL\s*[:\-]?\s*([\d.,]+)/i)?.[1] ||
+      "-";
 
-    if (!actionMatch || !entryMatch || !slMatch || tps.length === 0) {
-      console.error("DEBUG: Missing Trade Data. Text:", recText);
-      throw new Error("Invalid AI format — missing crucial trade data (Aksi, Entry, SL, or TP).");
+    // 🔍 Ambil semua TP versi lama (TP1, TP2, TP3)
+    const tp1 = text.match(/\bTake Profit 1\s*[:\-]?\s*([\d.,]+)/i);
+    const tp2 = text.match(/\bTake Profit 2\s*[:\-]?\s*([\d.,]+)/i);
+    const tp3 = text.match(/\bTake Profit 3\s*[:\-]?\s*([\d.,]+)/i);
+
+    const tpsMatches = [tp1, tp2, tp3].filter(
+      (m): m is RegExpMatchArray => Boolean(m && m[1])
+    );
+    const tps = tpsMatches.map((m) => clean(m[1]));
+
+    // 🔄 Ambil format baru “Take Profit: 2424, 2432, 2438”
+    const tpSingleLine = text.match(/\bTake Profit\s*[:\-]?\s*([\d.,\s]+)/i);
+    let tpsFromSingleLine: string[] = [];
+    if (tpSingleLine && tpSingleLine[1]) {
+      tpsFromSingleLine = tpSingleLine[1]
+        .split(/[,\s]+/)
+        .map((tp) => tp.trim())
+        .filter(Boolean);
+    }
+
+    // ✅ Pilih mana yang tersedia
+    const finalTps = tps.length > 0 ? tps : tpsFromSingleLine;
+
+    // 🧠 Tambahan informasi analisa umum
+    const trend =
+      text.match(/\bTrend Utama\s*[:\-]?\s*(.*)/i)?.[1] || "-";
+    const supportResistance =
+      text.match(/\bSupport\s*&\s*Resistance\s*[:\-]?\s*(.*)/i)?.[1] || "-";
+    const candlestick =
+      text.match(/\bPola Candlestick\s*[:\-]?\s*(.*)/i)?.[1] || "-";
+    const indicators =
+      text.match(/\bIndikator\s*[:\-]?\s*(.*)/i)?.[1] || "-";
+    const explanation =
+      text.match(/\bPenjelasan Analisa\s*[:\-]?\s*(.*)/i)?.[1] ||
+      text.match(/\bAnalisa Singkat\s*[:\-]?\s*(.*)/i)?.[1] ||
+      "AI tidak memberikan penjelasan tambahan.";
+
+    // 🚨 Validasi minimal biar gak error parsing
+    if (!aksi && !entry && !sl && finalTps.length === 0) {
+      console.error("DEBUG: Missing Trade Data:", text);
+      throw new Error(
+        "Invalid AI format — missing crucial trade data (Aksi, Entry, SL, or TP)."
+      );
     }
 
     return {
-      trend: extractAndClean(trendMatch),
-      supportResistance: extractAndClean(srMatch),
-      candlestick: extractAndClean(candleMatch),
-      indicators: extractAndClean(indMatch),
-      explanation: extractAndClean(expMatch),
+      trend: clean(trend),
+      supportResistance: clean(supportResistance),
+      candlestick: clean(candlestick),
+      indicators: clean(indicators),
+      explanation: clean(explanation),
       recommendation: {
-        action: extractAndClean(actionMatch) as 'Buy' | 'Sell',
-        entry: entryMatch[1].trim(),
-        entryRationale: extractAndClean(reasonMatch) === "N/A" ? "" : extractAndClean(reasonMatch),
-        stopLoss: slMatch[1].trim(),
-        takeProfit: tps,
+        action: clean(aksi) as "Buy" | "Sell",
+        entry: clean(entry),
+        entryRationale: "",
+        stopLoss: clean(sl),
+        takeProfit: finalTps.length > 0 ? finalTps : ["-"],
         riskProfile: currentRiskProfile,
       },
     };
   } catch (err) {
     console.error("❌ Failed to parse AI output:", err);
-    throw new Error(err instanceof Error ? err.message : "AI analysis format invalid or incomplete. Please retry.");
+    throw new Error(
+      err instanceof Error
+        ? err.message
+        : "AI analysis format invalid or incomplete. Please retry."
+    );
   }
 };
+
 
 // 🧠 Komponen utama aplikasi (AI Analyzer)
 const MainApp: React.FC = () => {
@@ -118,65 +163,63 @@ const MainApp: React.FC = () => {
   };
 
   const handleAnalyze = useCallback(async () => {
-  if (!imageBase64 || !pair || !timeframe) {
-    setError("Please upload an image and complete all fields.");
-    return;
-  }
-
-  setError(null);
-  setIsLoading(true);
-
-  try {
-    let retries = 3; // 🟢 Auto retry 3 kali
-    let data: any = null;
-    let response: Response | null = null;
-
-    while (retries > 0) {
-      response = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64, mimeType, pair, timeframe, risk }),
-      });
-
-      try {
-        data = await response.json();
-      } catch {
-        data = null;
-      }
-
-      // 🟢 Jika sukses atau respon ada text, berhenti retry
-      if (response.ok && data?.text) break;
-
-      console.warn(`Retrying... (${4 - retries} of 3)`);
-      retries--;
-
-      if (retries > 0) {
-        toast.info("Server sibuk, mencoba lagi...", { position: "bottom-right" });
-        await new Promise((r) => setTimeout(r, 2500)); // tunggu 2.5 detik
-      }
+    if (!imageBase64 || !pair || !timeframe) {
+      setError("Please upload an image and complete all fields.");
+      return;
     }
 
-    if (!response?.ok || !data?.text) {
-      throw new Error("Server overload atau gagal merespons. Coba lagi nanti.");
+    setError(null);
+    setIsLoading(true);
+
+    try {
+      let retries = 3;
+      let data: any = null;
+      let response: Response | null = null;
+
+      while (retries > 0) {
+        response = await fetch("/api/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageBase64, mimeType, pair, timeframe, risk }),
+        });
+
+        try {
+          data = await response.json();
+        } catch {
+          data = null;
+        }
+
+        if (response.ok && data?.text) break;
+
+        console.warn(`Retrying... (${4 - retries} of 3)`);
+        retries--;
+
+        if (retries > 0) {
+          toast.info("Server sibuk, mencoba lagi...", { position: "bottom-right" });
+          await new Promise((r) => setTimeout(r, 2500));
+        }
+      }
+
+      if (!response?.ok || !data?.text) {
+        throw new Error("Server overload atau gagal merespons. Coba lagi nanti.");
+      }
+
+      const rawText = data.text;
+      toast.success("Analisis AI Selesai!", { position: "bottom-right" });
+      const parsed = parseAnalysisText(rawText, risk);
+      setAnalysis(parsed);
+
+    } catch (err) {
+      console.error(err);
+      const errorMessage =
+        err instanceof Error ? err.message : "Unknown error occurred.";
+      toast.error(errorMessage, { position: "bottom-right" });
+      setError(errorMessage);
+    } finally {
+      setIsLoading(false);
     }
+  }, [imageBase64, mimeType, pair, timeframe, risk]);
 
-    const rawText = data.text;
-    toast.success("Analisis AI Selesai!", { position: "bottom-right" });
-    const parsed = parseAnalysisText(rawText, risk);
-    setAnalysis(parsed);
-
-  } catch (err) {
-    console.error(err);
-    const errorMessage =
-      err instanceof Error ? err.message : "Unknown error occurred.";
-    toast.error(errorMessage, { position: "bottom-right" });
-    setError(errorMessage);
-  } finally {
-    setIsLoading(false);
-  }
-}, [imageBase64, mimeType, pair, timeframe, risk]);
-
-  // 🟢 Tambahan tombol manual untuk load analisa terakhir
   const handleLoadLast = () => {
     try {
       const savedPair = localStorage.getItem("pair");
@@ -244,7 +287,6 @@ const MainApp: React.FC = () => {
             {isLoading ? "Analyzing..." : "Analyze Chart"}
           </button>
 
-          {/* 🟢 Tombol Load Last Analysis */}
           {localStorage.getItem("analysisResult") && (
             <button
               onClick={handleLoadLast}
@@ -278,6 +320,7 @@ const MainApp: React.FC = () => {
   );
 };
 
+
 // ⚙️ Loader layar penuh
 const FullScreenLoader: React.FC = () => (
   <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center">
@@ -285,6 +328,7 @@ const FullScreenLoader: React.FC = () => (
     <p className="text-amber-300 mt-4">Initializing Session...</p>
   </div>
 );
+
 
 // ⚙️ Wrapper utama (cek login + admin)
 const App: React.FC = () => {
