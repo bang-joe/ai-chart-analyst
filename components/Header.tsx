@@ -1,62 +1,29 @@
-// File: Header.tsx (FINAL FIX - USER LANGSUNG DARI TABEL MEMBERS TANPA AUTH)
-import React, { useEffect, useState } from 'react';
-import { supabase } from '../utils/supabase-client';
+// File: Header.tsx (FINAL FIX - DENGAN AKSES ADMIN PANEL TERINTEGRASI)
+
+import React, { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { Logo } from './Logo';
 import { LogoutIcon } from './icons';
 import { toast } from 'react-toastify';
 
 interface HeaderProps {
-  onOpenAdmin?: () => void;
-  onLogout?: () => void; // ✅ WAJIB ADA BARIS INI
+  onOpenAdmin?: () => void; // ✅ Tambahan: event handler opsional untuk buka AdminPanel
 }
 
-interface Member {
-  id: string;
-  name: string;
-  email?: string;
-  is_admin?: boolean;
-  activation_code?: string;
-}
+export const Header: React.FC<HeaderProps> = ({ onOpenAdmin }) => {
+  const { user, logout } = useAuth();
 
-export const Header: React.FC<HeaderProps> = ({ onOpenAdmin, onLogout }) => {
-  const [user, setUser] = useState<Member | null>(null);
-
-  // 🟡 Ambil data user dari Supabase (table: members)
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const savedUser = localStorage.getItem("member_user");
-        if (!savedUser) return;
-
-        const parsed = JSON.parse(savedUser);
-        if (!parsed.activation_code) return;
-
-        // Ambil data user by activation_code dari Supabase
-        const { data, error } = await supabase
-          .from("members")
-          .select("*")
-          .eq("activation_code", parsed.activation_code)
-          .single();
-
-        if (error) {
-          console.warn("Gagal ambil user dari Supabase:", error.message);
-          return;
-        }
-
-        setUser(data);
-      } catch (err) {
-        console.error("Error fetch user:", err);
-      }
-    };
-
-    fetchUser();
-  }, []);
-
-  const handleLogout = () => {
-    localStorage.removeItem("member_user");
-    setUser(null);
-    toast.info("Anda telah logout.", { position: "top-right", autoClose: 3000 });
-    if (onLogout) onLogout(); // ✅ kalau App.tsx kirim handler logout, panggil juga
+  const handleLogout = async () => {
+    try {
+      await logout();
+      toast.info("Anda telah berhasil logout.", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+    } catch (error) {
+      console.error("Logout failed:", error);
+      toast.error("Gagal melakukan logout.");
+    }
   };
 
   return (
@@ -78,19 +45,19 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAdmin, onLogout }) => {
         <div className="absolute top-1/2 -translate-y-1/2 right-0 flex items-center space-x-3 pr-2 sm:pr-4">
           <div className="text-right hidden sm:block">
             <p className="font-semibold text-white truncate">{user.name}</p>
-            {user.email && <p className="text-xs text-gray-400 truncate">{user.email}</p>}
+            <p className="text-xs text-gray-400 truncate">{user.email}</p>
           </div>
 
-          {/* Avatar */}
+          {/* Foto Profil */}
           <div className="w-12 h-12 rounded-full border-2 border-amber-500/50 bg-gray-700 flex items-center justify-center">
             <span className="text-lg text-amber-400 font-bold">
-              {user.name ? user.name.charAt(0).toUpperCase() : "?"}
+              {user.name.charAt(0)}
             </span>
           </div>
 
-          {/* Tombol Admin + Logout */}
+          {/* Tombol Logout dan Admin */}
           <div className="flex flex-col space-y-1 items-center">
-            {user.is_admin && (
+            {user.isAdmin && (
               <button
                 onClick={onOpenAdmin}
                 className="bg-amber-600/90 hover:bg-amber-500 text-black font-semibold text-xs px-3 py-1 rounded-full shadow-sm transition-all"
