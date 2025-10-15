@@ -4,7 +4,6 @@ export const config = {
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// 🔑 Ambil semua key Gemini dari environment Vercel
 const GEMINI_KEYS: string[] = [
   process.env.GEMINI_API_KEY as string,
   process.env.GEMINI_KEY_1 as string,
@@ -16,7 +15,6 @@ if (GEMINI_KEYS.length === 0) {
   throw new Error("❌ No Gemini API keys found in Vercel environment!");
 }
 
-// 🧠 Fungsi untuk coba beberapa key sampai berhasil
 async function generateWithFallback(
   prompt: string,
   imageBase64: string,
@@ -32,30 +30,41 @@ async function generateWithFallback(
         model: "gemini-1.5-flash-latest",
       });
 
-      // Timeout cepat (10 detik aja biar responsif)
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("⏱️ AI timeout")), 10000)
-      );
+      const base64data = imageBase64.split(",")[1];
 
-      const aiResponsePromise = model.generateContent([
-        { text: prompt },
-        {
-          inlineData: {
-            data: imageBase64.split(",")[1],
-            mimeType,
+      // 🔒 Batas aman gambar
+      if (!base64data) throw new Error("Invalid image data");
+      if (base64data.length > 20_000_000)
+        throw new Error("Image too large for Gemini API (max ~20MB)");
+
+      const aiResponse = await model.generateContent({
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { text: prompt },
+              { inlineData: { data: base64data, mimeType } },
+            ],
           },
-        },
-      ]);
+        ],
+      });
 
-      const result: any = await Promise.race([aiResponsePromise, timeoutPromise]);
-      const text = result?.response?.text?.();
+      const text = aiResponse?.response?.text?.();
 
       if (text && text.trim()) return text;
 
       throw new Error("Empty response from Gemini.");
     } catch (err: any) {
+      console.warn(`⚠️ Gemini key [${i + 1}] failed: ${err.message}`);
       lastError = err;
-      // Tunggu 1 detik antar key supaya gak overload
+
+      if (
+        err.message.includes("invalid") ||
+        err.message.includes("permission")
+      )
+        continue; // lanjut ke key berikutnya
+
+      // cooldown antar percobaan
       await new Promise((r) => setTimeout(r, 1000));
     }
   }
@@ -65,10 +74,8 @@ async function generateWithFallback(
   );
 }
 
-// ⚙️ Handler hybrid — auto deteksi format request (Node / Web)
 export default async function handler(req: any, res?: any) {
   try {
-    // Deteksi tipe runtime (Next.js atau Web)
     const body =
       typeof req.json === "function" ? await req.json() : req.body || {};
 
@@ -83,7 +90,6 @@ export default async function handler(req: any, res?: any) {
       });
     }
 
-    // 🎯 Prompt profesional
     const prompt = `
 Kamu adalah seorang analis teknikal profesional dengan pengalaman lebih dari 10 tahun di pasar emas dan forex.
 Analisa chart ${pair} timeframe ${timeframe} dengan fokus pada strategi low risk dan efisiensi tinggi.
