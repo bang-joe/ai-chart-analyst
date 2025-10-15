@@ -1,4 +1,5 @@
-// File: App.tsx (FINAL FIX + RESTORE LAST STATE + LOAD LAST ANALYSIS)
+// File: App.tsx (FINAL PATCHED VERSION - SESSION AUTO REFRESH FIX)
+
 import 'react-toastify/dist/ReactToastify.css';
 import { ToastContainer, toast } from 'react-toastify';
 import React, { useState, useEffect, useCallback } from "react";
@@ -11,8 +12,8 @@ import type { Analysis } from "./types";
 import { Footer } from "./components/Footer";
 import AdminPanel from "./components/AdminPanel";
 import { motion } from "framer-motion";
+import { supabase } from "./utils/supabase-client"; // ✅ pastikan ini ada
 import { AnalysisResult } from './components/AnalysisResult';
-
 
 // 🧩 Parsing hasil analisis AI (versi rapi + fix duplikasi & Strategi)
 const parseAnalysisText = (
@@ -314,6 +315,18 @@ const FullScreenLoader: React.FC = () => (
 const App: React.FC = () => {
   const { user, loading } = useAuth();
   const [showAdminPanel, setShowAdminPanel] = useState(false);
+
+  // 🩵 Tambahan penting: pantau perubahan sesi Supabase
+  useEffect(() => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "TOKEN_REFRESHED") console.log("🔁 Token refreshed successfully.");
+      if (event === "SIGNED_OUT" || !session) {
+        console.warn("⚠️ Session expired or signed out.");
+        localStorage.removeItem("authUser");
+      }
+    });
+    return () => listener.subscription.unsubscribe();
+  }, []);
 
   if (loading) return <FullScreenLoader />;
 

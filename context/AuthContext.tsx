@@ -146,12 +146,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // 🚪 Logout handler
-  const logout = () => {
-    localStorage.removeItem("authUser");
-    setUser(null);
-    toast.info("Anda telah logout.");
-    supabase.auth.signOut();
-  };
+  const logout = async () => {
+  localStorage.removeItem("authUser");
+  setUser(null);
+  await supabase.auth.signOut(); // pastikan tunggu selesai
+  await caches.keys().then(keys => keys.forEach(k => caches.delete(k))); // hapus cache lama
+  toast.info("Anda telah logout.");
+};
+
 
   if (loading) {
     return (
