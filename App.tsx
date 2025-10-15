@@ -1,10 +1,8 @@
-// File: App.tsx (FINAL FIX + RESTORE LAST STATE + LOAD LAST ANALYSIS + AUTH FALLBACK SAFE)
-
+// File: App.tsx (FINAL FIX TANPA SUPABASE AUTH - RESTORE LAST STATE + LOAD LAST ANALYSIS)
 import 'react-toastify/dist/ReactToastify.css';
 import { ToastContainer, toast } from 'react-toastify';
 import React, { useState, useEffect, useCallback } from "react";
-import { useAuth } from "./context/AuthContext";
-import { LoginScreen } from "./components/LoginScreen";
+import { supabase } from "./utils/supabase-client";
 import { Header } from "./components/Header";
 import { ImageUploader } from "./components/ImageUploader";
 import { Loader } from "./components/Loader";
@@ -14,7 +12,7 @@ import AdminPanel from "./components/AdminPanel";
 import { motion } from "framer-motion";
 import { AnalysisResult } from './components/AnalysisResult';
 
-// 🧩 Parsing hasil analisis AI
+// 🧩 Parsing hasil analisis AI (sama persis versi lama)
 const parseAnalysisText = (text: string, currentRiskProfile: "Low" | "Medium"): Analysis | null => {
   try {
     const extractAndClean = (matchResult: RegExpMatchArray | null, fallback: string = "N/A") => {
@@ -41,7 +39,6 @@ const parseAnalysisText = (text: string, currentRiskProfile: "Low" | "Medium"): 
     const tps = [tp1, tp2, tp3].filter(Boolean).map((m) => m![1].trim());
 
     if (!actionMatch || !entryMatch || !slMatch || tps.length === 0) {
-      console.error("DEBUG: Missing Trade Data. Text:", recText);
       throw new Error("Invalid AI format — missing crucial trade data (Aksi, Entry, SL, or TP).");
     }
 
@@ -61,8 +58,7 @@ const parseAnalysisText = (text: string, currentRiskProfile: "Low" | "Medium"): 
       },
     };
   } catch (err) {
-    console.error("❌ Failed to parse AI output:", err);
-    throw new Error(err instanceof Error ? err.message : "AI analysis format invalid or incomplete. Please retry.");
+    throw new Error("AI analysis format invalid or incomplete.");
   }
 };
 
@@ -78,7 +74,6 @@ const MainApp: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
 
-  // 🟡 Restore state dari localStorage
   useEffect(() => {
     const savedPair = localStorage.getItem("pair");
     const savedTimeframe = localStorage.getItem("timeframe");
@@ -93,7 +88,6 @@ const MainApp: React.FC = () => {
     if (savedPreview) setPreview(savedPreview);
   }, []);
 
-  // 🟡 Simpan otomatis setiap perubahan
   useEffect(() => localStorage.setItem("pair", pair), [pair]);
   useEffect(() => localStorage.setItem("timeframe", timeframe), [timeframe]);
   useEffect(() => localStorage.setItem("risk", risk), [risk]);
@@ -145,35 +139,12 @@ const MainApp: React.FC = () => {
       setAnalysis(parsed);
 
     } catch (err) {
-      console.error(err);
-      const errorMessage = err instanceof Error ? err.message : "Unknown error occurred.";
-      toast.error(errorMessage);
-      setError(errorMessage);
+      toast.error("Gagal analisis, coba lagi.");
+      setError("Server error.");
     } finally {
       setIsLoading(false);
     }
   }, [imageBase64, mimeType, pair, timeframe, risk]);
-
-  // 🟢 Tambahan tombol manual untuk load analisa terakhir
-  const handleLoadLast = () => {
-    try {
-      const savedPair = localStorage.getItem("pair");
-      const savedTimeframe = localStorage.getItem("timeframe");
-      const savedRisk = localStorage.getItem("risk");
-      const savedAnalysis = localStorage.getItem("analysisResult");
-      const savedPreview = localStorage.getItem("preview");
-
-      if (savedPair) setPair(savedPair);
-      if (savedTimeframe) setTimeframe(savedTimeframe);
-      if (savedRisk) setRisk(savedRisk as "Low" | "Medium");
-      if (savedAnalysis) setAnalysis(JSON.parse(savedAnalysis));
-      if (savedPreview) setPreview(savedPreview);
-
-      toast.info("Last analysis loaded!", { position: "bottom-right" });
-    } catch (err) {
-      console.error("Failed to load last analysis:", err);
-    }
-  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-fade-in-up">
@@ -221,16 +192,6 @@ const MainApp: React.FC = () => {
           >
             {isLoading ? "Analyzing..." : "Analyze Chart"}
           </button>
-
-          {/* 🟢 Tombol Load Last Analysis */}
-          {localStorage.getItem("analysisResult") && (
-            <button
-              onClick={handleLoadLast}
-              className="w-full font-semibold py-2 px-4 mt-3 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-200 transition-all"
-            >
-              Load Last Analysis
-            </button>
-          )}
         </div>
       </div>
 
@@ -260,18 +221,61 @@ const MainApp: React.FC = () => {
 const FullScreenLoader: React.FC = () => (
   <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center">
     <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-amber-400"></div>
-    <p className="text-amber-300 mt-4">Initializing Session...</p>
+    <p className="text-amber-300 mt-4">Loading...</p>
   </div>
 );
 
-// ⚙️ Wrapper utama (cek login + admin)
+// ⚙️ Wrapper utama (login langsung dari tabel members)
 const App: React.FC = () => {
-  const { user, loading } = useAuth() || { user: null, loading: false }; // ✅ Fallback biar gak error kalau AuthContext nonaktif
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [code, setCode] = useState("");
   const [showAdminPanel, setShowAdminPanel] = useState(false);
+
+  useEffect(() => {
+    const savedUser = localStorage.getItem("member_user");
+    if (savedUser) setUser(JSON.parse(savedUser));
+    setLoading(false);
+  }, []);
+
+  const handleLogin = async () => {
+    if (!code.trim()) {
+      toast.error("Masukkan kode aktivasi.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("members")
+        .select("*")
+        .eq("activation_code", code.trim())
+        .single();
+
+      if (error || !data) {
+        toast.error("Kode tidak ditemukan.");
+        setLoading(false);
+        return;
+      }
+
+      localStorage.setItem("member_user", JSON.stringify(data));
+      setUser(data);
+      toast.success(`Selamat datang, ${data.name}`);
+    } catch {
+      toast.error("Gagal login.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("member_user");
+    setUser(null);
+    toast.info("Logout berhasil.");
+  };
 
   if (loading) return <FullScreenLoader />;
 
-  if (user?.isAdmin && showAdminPanel) {
+  if (user?.is_admin && showAdminPanel) {
     return <AdminPanel onClose={() => setShowAdminPanel(false)} />;
   }
 
@@ -280,7 +284,7 @@ const App: React.FC = () => {
       {user ? (
         <div className="min-h-screen bg-gray-900 text-gray-200 p-4 sm:p-6 lg:p-8">
           <div className="max-w-7xl mx-auto">
-            <Header onOpenAdmin={() => setShowAdminPanel(true)} />
+            <Header onOpenAdmin={() => setShowAdminPanel(true)} onLogout={handleLogout} />
             <main className="mt-8">
               <MainApp />
             </main>
@@ -288,7 +292,22 @@ const App: React.FC = () => {
           </div>
         </div>
       ) : (
-        <LoginScreen />
+        <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 text-gray-200">
+          <h1 className="text-3xl font-bold mb-6">Masukkan Kode Aktivasi</h1>
+          <input
+            type="text"
+            placeholder="Kode Aktivasi"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            className="px-4 py-2 rounded-md bg-gray-800 border border-gray-600 text-white focus:ring-2 focus:ring-amber-500 mb-4"
+          />
+          <button
+            onClick={handleLogin}
+            className="bg-amber-600 hover:bg-amber-700 px-6 py-2 rounded-md font-semibold text-white"
+          >
+            Masuk
+          </button>
+        </div>
       )}
       <ToastContainer position="top-right" autoClose={3000} />
     </>
