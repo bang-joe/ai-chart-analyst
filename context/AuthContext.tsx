@@ -1,4 +1,5 @@
 // File: context/AuthContext.tsx (FINAL FIX – Auto Sync + Persist Login State)
+
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import { supabase } from "../utils/supabase-client";
@@ -145,15 +146,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // 🚪 Logout handler
+  // 🚪 Logout handler (benar-benar bersih)
   const logout = async () => {
-  localStorage.removeItem("authUser");
-  setUser(null);
-  await supabase.auth.signOut(); // pastikan tunggu selesai
-  await caches.keys().then(keys => keys.forEach(k => caches.delete(k))); // hapus cache lama
-  toast.info("Anda telah logout.");
-};
+    try {
+      await supabase.auth.signOut(); // pastikan token dihapus
+      localStorage.removeItem("authUser");
 
+      // 🧹 Hapus semua cache & session lama
+      await caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k))));
+      sessionStorage.clear();
+
+      setUser(null);
+      toast.info("Anda telah logout.");
+      window.location.reload(); // force UI refresh
+    } catch (err) {
+      console.error("Logout error:", err);
+      toast.error("Gagal logout dengan benar.");
+    }
+  };
 
   if (loading) {
     return (

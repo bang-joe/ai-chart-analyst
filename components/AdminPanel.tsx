@@ -1,9 +1,9 @@
-// File: components/AdminPanel.tsx (FINAL CLEAN VERSION - NO ADMIN LOGS)
+// File: components/AdminPanel.tsx (FINAL FIXED VERSION - SESSION SYNC + NO ADMIN LOGS)
 
 import React, { useState, useEffect, useCallback } from "react";
-import { createClient } from "@supabase/supabase-js";
 import { motion } from "framer-motion";
 import { toast } from "react-toastify";
+import { supabase } from "../utils/supabase-client"; // ✅ gunakan instance Supabase utama
 
 interface User {
   id: number;
@@ -25,11 +25,6 @@ interface AdminPanelProps {
   onClose: () => void;
 }
 
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL!,
-  import.meta.env.VITE_SUPABASE_ANON_KEY!
-);
-
 const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,23 +41,37 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     membership_expires_at: null,
   });
 
+  // ✅ Pantau perubahan session Supabase (biar gak logout random)
+  useEffect(() => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "TOKEN_REFRESHED") {
+        console.log("🔁 Token admin diperbarui otomatis.");
+      }
+      if (event === "SIGNED_OUT" || !session) {
+        toast.error("⚠️ Sesi kadaluarsa. Silakan login ulang.");
+        onClose();
+      }
+    });
+    return () => listener.subscription.unsubscribe();
+  }, [onClose]);
+
   // ✅ Verifikasi hanya admin bisa buka panel ini
   const verifyAdmin = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data, error } = await supabase.auth.getUser();
 
-    if (!user) {
+    if (error || !data?.user) {
       toast.error("⚠️ Sesi kadaluarsa. Silakan login ulang.");
       onClose();
       return false;
     }
 
-    const { data: member, error } = await supabase
+    const { data: member, error: err2 } = await supabase
       .from("members")
       .select("is_admin")
-      .eq("email", user.email)
+      .eq("email", data.user.email)
       .maybeSingle();
 
-    if (error || !member?.is_admin) {
+    if (err2 || !member?.is_admin) {
       toast.error("🚫 Akses ditolak. Hanya admin yang dapat mengelola data.");
       onClose();
       return false;
@@ -79,7 +88,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
 
     const { data, error } = await supabase
       .from("members")
-      .select("id, uid, name, email, activation_code, is_admin, is_active, membership_type, plan_type, join_date, membership_expires_at")
+      .select(
+        "id, uid, name, email, activation_code, is_admin, is_active, membership_type, plan_type, join_date, membership_expires_at"
+      )
       .order("id", { ascending: false });
 
     if (error) {
@@ -171,7 +182,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
       className="fixed inset-0 bg-black/70 backdrop-blur-md flex justify-center items-center z-50 p-4 overflow-y-auto"
     >
       <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-6xl shadow-lg relative text-gray-200">
-
         {/* ✳️ Tombol Close Panel */}
         <button
           onClick={onClose}
@@ -243,7 +253,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                     </div>
                     <div className="flex gap-2 items-center">
                       <button
-                        onClick={() => handleToggleField(u.id, "is_admin", u.is_admin)}
+                        onClick={() =>
+                          handleToggleField(u.id, "is_admin", u.is_admin)
+                        }
                         className={`px-3 py-1 rounded-md text-xs font-bold ${
                           u.is_admin ? "bg-blue-600" : "bg-gray-600"
                         }`}
@@ -251,7 +263,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                         {u.is_admin ? "Admin" : "User"}
                       </button>
                       <button
-                        onClick={() => handleToggleField(u.id, "is_active", u.is_active)}
+                        onClick={() =>
+                          handleToggleField(u.id, "is_active", u.is_active)
+                        }
                         className={`px-3 py-1 rounded-md text-xs font-bold ${
                           u.is_active ? "bg-green-600" : "bg-red-600"
                         }`}

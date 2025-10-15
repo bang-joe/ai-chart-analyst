@@ -1,50 +1,56 @@
-// File: utils/supabase-client.ts (FINAL FIXED VERSION - Supabase v2+)
+// File: utils/supabase-client.ts (FINAL PRODUCTION-READY VERSION)
+// 💡 Versi ini aman, stabil, dan auto-sync antar halaman & komponen
 
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
-// 🧩 Variabel lingkungan dari Vite
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// 🔐 Ambil environment variable dari Vercel
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL!;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY!;
 
-// ✅ Gunakan Singleton agar tidak inisialisasi ulang setiap kali file diimpor
-let supabaseClient: SupabaseClient | null = null;
+// 🧱 Singleton Supabase Client biar gak reinit setiap render
+let supabase: SupabaseClient | null = null;
 
 /**
- * Inisialisasi Supabase Client hanya sekali
+ * Inisialisasi Supabase hanya sekali.
+ * Menjamin session sinkron antar komponen (Login, AdminPanel, dsb)
  */
 function initSupabase(): SupabaseClient {
+  if (supabase) return supabase;
+
   if (!supabaseUrl || !supabaseAnonKey) {
-    console.error("❌ Supabase env vars (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY) hilang!");
-    throw new Error("Missing Supabase credentials. Pastikan .env sudah benar.");
+    console.error("❌ Supabase credentials missing in environment variables.");
+    throw new Error("Missing Supabase credentials. Check Vercel environment settings.");
   }
 
-  if (!supabaseClient) {
-    supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true, // ✅ token otomatis diperbarui
-        detectSessionInUrl: true,
-        storageKey: "tradersxauusd-session", // ✅ pengganti multiTab
+  supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      storageKey: "sb-tradersxauusd-auth", // ⚙️ gunakan key unik biar session gak bentrok
+    },
+    global: {
+      fetch: async (url, options) => {
+        // Tambahan proteksi agar fetch error lebih mudah dideteksi
+        const res = await fetch(url, options);
+        if (!res.ok) console.warn("🌐 Supabase fetch warning:", res.status, url);
+        return res;
       },
-      global: {
-        headers: { "x-client-info": "tradersxauusd-web" },
-      },
-    });
-    console.log("✅ Supabase client initialized.");
-  }
+    },
+  });
 
-  return supabaseClient;
+  console.log("✅ Supabase client initialized (shared instance).");
+  return supabase;
 }
 
 /**
- * Helper universal untuk akses instance Supabase yang aman
+ * Helper universal agar semua file pakai instance sama
  */
-export const getSupabase = (): SupabaseClient => {
-  return initSupabase();
-};
+export const getSupabase = (): SupabaseClient => initSupabase();
 
-// ✅ Export default instance agar kompatibel dengan semua import lama
-export const supabase = getSupabase();
-
-// Alias opsional untuk backward compatibility
-export const client = supabase;
+/**
+ * Default export (untuk import cepat)
+ * Gunakan: import { supabase } from "../utils/supabase-client";
+ */
+export const supabaseClient = getSupabase();
+export { supabaseClient as supabase };
