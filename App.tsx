@@ -1,4 +1,4 @@
-// File: App.tsx (FINAL FIX TANPA SUPABASE AUTH + FULL RESTORE + LOAD ANALYSIS)
+// File: App.tsx (FINAL UI FIX - LOGIN MIRIP VERSI LAMA, TANPA SUPABASE AUTH)
 import 'react-toastify/dist/ReactToastify.css';
 import { ToastContainer, toast } from 'react-toastify';
 import React, { useState, useEffect, useCallback } from "react";
@@ -12,70 +12,44 @@ import { motion } from "framer-motion";
 import { AnalysisResult } from './components/AnalysisResult';
 import { supabase } from "./utils/supabase-client";
 
-// 🧩 Parsing hasil analisis AI
+// --- Fungsi parsing hasil analisa AI ---
 const parseAnalysisText = (text: string, currentRiskProfile: "Low" | "Medium"): Analysis | null => {
   try {
-    const extractAndClean = (matchResult: RegExpMatchArray | null, fallback: string = "N/A") => {
-      if (!matchResult || !matchResult[1]) return fallback;
-      return matchResult[1].replace(/(\n\s*\*|\*|--|`|#)/g, " ").replace(/\s+/g, " ").trim();
-    };
+    const extractAndClean = (m: RegExpMatchArray | null, fallback = "N/A") =>
+      !m || !m[1] ? fallback : m[1].replace(/(\n\s*\*|\*|--|`|#)/g, " ").replace(/\s+/g, " ").trim();
 
-    const trendMatch = text.match(/\bTrend Utama\s*[:\s]+([\s\S]*?)(?=\n\s*\d\.|\n---|\n\s*$)/i);
-    const srMatch = text.match(/\bSupport & Resistance\s*[:\s]+([\s\S]*?)(?=\n\s*\d\.|\n---|\n\s*$)/i);
-    const candleMatch = text.match(/\bPola Candlestick\s*[:\s]+([\s\S]*?)(?=\n\s*\d\.|\n---|\n\s*$)/i);
-    const indMatch = text.match(/\bIndikator\s*[:\s]+([\s\S]*?)(?=\n\s*\d\.|\n---|\n\s*$)/i);
-    const expMatch = text.match(/\bPenjelasan Analisa & Strategi\s*[:\s]+([\s\S]*?)(?=\n\s*\d\.|\n---|\n\s*$)/i);
+    const trend = extractAndClean(text.match(/\bTrend Utama\s*[:\s]+([\s\S]*?)(?=\n\d\.|\n---|\n$)/i));
+    const sr = extractAndClean(text.match(/\bSupport & Resistance\s*[:\s]+([\s\S]*?)(?=\n\d\.|\n---|\n$)/i));
+    const candle = extractAndClean(text.match(/\bPola Candlestick\s*[:\s]+([\s\S]*?)(?=\n\d\.|\n---|\n$)/i));
+    const indicator = extractAndClean(text.match(/\bIndikator\s*[:\s]+([\s\S]*?)(?=\n\d\.|\n---|\n$)/i));
+    const explain = extractAndClean(text.match(/\bPenjelasan Analisa & Strategi\s*[:\s]+([\s\S]*?)(?=\n\d\.|\n---|\n$)/i));
 
-    const recMatch = text.match(/\bRekomendasi Entry\s*[:\s]*([\s\S]*)/i);
-    const recText = recMatch ? recMatch[1] : "";
+    const rec = text.match(/\bRekomendasi Entry\s*[:\s]*([\s\S]*)/i)?.[1] ?? "";
+    const action = extractAndClean(rec.match(/\bAksi\s*:\s*(Buy|Sell)/i));
+    const entry = extractAndClean(rec.match(/\bEntry\s*:\s*([\d.,-]+)/i));
+    const reason = extractAndClean(rec.match(/\bRasional Entry\s*:\s*(.*)/i));
+    const sl = extractAndClean(text.match(/\bStop Loss\s*:\s*([\d.,-]+)/i));
+    const tps = ["Take Profit 1", "Take Profit 2", "Take Profit 3"]
+      .map(k => rec.match(new RegExp(`\\b${k}\\s*:\\s*([\\d.,-]+)`, "i")))
+      .filter(Boolean)
+      .map(m => m![1].trim());
 
-    const actionMatch = recText.match(/\bAksi\s*:\s*(Buy|Sell)/i);
-    const entryMatch = recText.match(/\bEntry\s*:\s*([\d.,-]+)/i);
-    const reasonMatch = recText.match(/\bRasional Entry\b\s*:\s*(.*)/i);
-    const slMatch = text.match(/\bStop Loss\s*:\s*([\d.,-]+)/i);
-    const tp1 = recText.match(/\bTake Profit 1\s*:\s*([\d.,-]+)/i);
-    const tp2 = recText.match(/\bTake Profit 2\s*:\s*([\d.,-]+)/i);
-    const tp3 = recText.match(/\bTake Profit 3\s*:\s*([\d.,-]+)/i);
-    const tps = [tp1, tp2, tp3].filter(Boolean).map((m) => m![1].trim());
-
-    if (!actionMatch || !entryMatch || !slMatch || tps.length === 0) {
-      console.error("DEBUG: Missing Trade Data. Text:", recText);
-      throw new Error("Invalid AI format — missing crucial trade data (Aksi, Entry, SL, or TP).");
-    }
+    if (!action || !entry || !sl || !tps.length) throw new Error("Format analisa tidak lengkap.");
 
     return {
-      trend: extractAndClean(trendMatch),
-      supportResistance: extractAndClean(srMatch),
-      candlestick: extractAndClean(candleMatch),
-      indicators: extractAndClean(indMatch),
-      explanation: extractAndClean(expMatch),
-      recommendation: {
-        action: extractAndClean(actionMatch) as 'Buy' | 'Sell',
-        entry: entryMatch[1].trim(),
-        entryRationale: extractAndClean(reasonMatch) === "N/A" ? "" : extractAndClean(reasonMatch),
-        stopLoss: slMatch[1].trim(),
-        takeProfit: tps,
-        riskProfile: currentRiskProfile,
-      },
+      trend, supportResistance: sr, candlestick: candle, indicators: indicator, explanation: explain,
+      recommendation: { action: action as 'Buy' | 'Sell', entry, entryRationale: reason, stopLoss: sl, takeProfit: tps, riskProfile: currentRiskProfile },
     };
   } catch (err) {
-    console.error("❌ Failed to parse AI output:", err);
-    throw new Error(err instanceof Error ? err.message : "AI analysis format invalid or incomplete. Please retry.");
+    console.error("❌ Parse Error:", err);
+    throw new Error("AI output format invalid. Silakan analisa ulang.");
   }
 };
 
-// ⚙️ Loader layar penuh
-const FullScreenLoader: React.FC = () => (
-  <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center">
-    <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-amber-400"></div>
-    <p className="text-amber-300 mt-4">Initializing Session...</p>
-  </div>
-);
-
-// 🧠 Komponen utama aplikasi (AI Analyzer)
+// --- Komponen utama analisa ---
 const MainApp: React.FC = () => {
   const [imageBase64, setImageBase64] = useState<string | null>(null);
-  const [mimeType, setMimeType] = useState<string>("");
+  const [mimeType, setMimeType] = useState("");
   const [pair, setPair] = useState("");
   const [timeframe, setTimeframe] = useState("");
   const [risk, setRisk] = useState<"Low" | "Medium">("Medium");
@@ -83,21 +57,6 @@ const MainApp: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
-
-  // Restore state dari localStorage
-  useEffect(() => {
-    const savedPair = localStorage.getItem("pair");
-    const savedTimeframe = localStorage.getItem("timeframe");
-    const savedRisk = localStorage.getItem("risk");
-    const savedAnalysis = localStorage.getItem("analysisResult");
-    const savedPreview = localStorage.getItem("preview");
-
-    if (savedPair) setPair(savedPair);
-    if (savedTimeframe) setTimeframe(savedTimeframe);
-    if (savedRisk) setRisk(savedRisk as "Low" | "Medium");
-    if (savedAnalysis) setAnalysis(JSON.parse(savedAnalysis));
-    if (savedPreview) setPreview(savedPreview);
-  }, []);
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -114,30 +73,23 @@ const MainApp: React.FC = () => {
   };
 
   const handleAnalyze = useCallback(async () => {
-    if (!imageBase64 || !pair || !timeframe) {
-      setError("Please upload an image and complete all fields.");
-      return;
-    }
+    if (!imageBase64 || !pair || !timeframe) return setError("Lengkapi data sebelum analisa.");
     setError(null);
     setIsLoading(true);
     try {
-      const response = await fetch('/api/analyze', {
+      const res = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageBase64, mimeType, pair, timeframe, risk }),
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Server error: Gagal mendapatkan analisa.');
-      const rawText = data.text;
-      if (!rawText) throw new Error("Server mengembalikan data kosong.");
-      toast.success("Analisis AI Selesai!", { position: "bottom-right" });
-      const parsed = parseAnalysisText(rawText, risk);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Server error.");
+      const parsed = parseAnalysisText(data.text, risk);
       setAnalysis(parsed);
+      toast.success("Analisis selesai!");
     } catch (err) {
-      console.error(err);
-      const errorMessage = err instanceof Error ? err.message : "Unknown error occurred.";
-      toast.error(errorMessage);
-      setError(errorMessage);
+      toast.error((err as Error).message);
+      setError((err as Error).message);
     } finally {
       setIsLoading(false);
     }
@@ -152,28 +104,27 @@ const MainApp: React.FC = () => {
           onClick={handleAnalyze}
           disabled={isLoading}
           className={`w-full font-bold py-3 px-4 rounded-lg mt-4 transition-all duration-300 ${
-            isLoading
-              ? "bg-gray-600 cursor-wait"
-              : "bg-amber-600 hover:bg-amber-700 transform hover:-translate-y-1 shadow-lg shadow-amber-500/30"
+            isLoading ? "bg-gray-600 cursor-wait" : "bg-amber-600 hover:bg-amber-700 shadow-lg"
           }`}
         >
           {isLoading ? "Analyzing..." : "Analyze Chart"}
         </button>
       </div>
+
       <div className="bg-gray-800/50 p-6 rounded-2xl shadow-lg border border-gray-700 backdrop-blur-sm">
         {isLoading ? <Loader /> : error ? (
           <div className="text-red-400 bg-red-900/40 p-4 rounded-lg">{error}</div>
         ) : analysis ? (
           <AnalysisResult analysis={analysis} />
         ) : (
-          <p className="text-gray-400">Upload chart dan klik “Analyze Chart” untuk memulai analisis AI.</p>
+          <p className="text-gray-400">Upload chart dan klik “Analyze Chart”.</p>
         )}
       </div>
     </div>
   );
 };
 
-// ⚙️ Wrapper utama (cek login + admin)
+// --- Halaman utama ---
 const App: React.FC = () => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -187,14 +138,11 @@ const App: React.FC = () => {
   }, []);
 
   const handleLogin = async () => {
-    if (!code.trim()) {
-      toast.error("Masukkan kode aktivasi!");
-      return;
-    }
+    if (!code.trim()) return toast.error("Masukkan kode aktivasi!");
     setLoading(true);
     const { data, error } = await supabase.from("members").select("*").eq("activation_code", code.trim()).single();
     if (error || !data) {
-      toast.error("Kode aktivasi tidak valid!");
+      toast.error("Kode tidak valid!");
       setLoading(false);
       return;
     }
@@ -210,21 +158,23 @@ const App: React.FC = () => {
     toast.info("Logout berhasil.");
   };
 
-  if (loading) return <FullScreenLoader />;
+  if (loading)
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 text-amber-400">
+        <Loader />
+        <p className="mt-4">Memuat aplikasi...</p>
+      </div>
+    );
 
-  if (user?.is_admin && showAdminPanel) {
+  if (user?.is_admin && showAdminPanel)
     return <AdminPanel onClose={() => setShowAdminPanel(false)} />;
-  }
 
   return (
     <>
       {user ? (
         <div className="min-h-screen bg-gray-900 text-gray-200 p-4 sm:p-6 lg:p-8">
           <div className="max-w-7xl mx-auto">
-            <Header
-              onOpenAdmin={() => setShowAdminPanel(true)}
-              onLogout={() => handleLogout()}
-            />
+            <Header onOpenAdmin={() => setShowAdminPanel(true)} onLogout={() => handleLogout()} />
             <main className="mt-8">
               <MainApp />
             </main>
@@ -233,13 +183,14 @@ const App: React.FC = () => {
         </div>
       ) : (
         <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 text-gray-200">
-          <h1 className="text-3xl font-bold mb-6">Masukkan Kode Aktivasi</h1>
+          <h1 className="text-4xl font-bold mb-6 text-amber-400">AI Chart Analyst</h1>
+          <p className="text-gray-400 mb-4">Masukkan kode aktivasi Anda untuk melanjutkan.</p>
           <input
             type="text"
             placeholder="Kode Aktivasi"
             value={code}
             onChange={(e) => setCode(e.target.value)}
-            className="px-4 py-2 rounded-md bg-gray-800 border border-gray-600 text-white mb-4 focus:ring-2 focus:ring-amber-500"
+            className="px-4 py-2 rounded-md bg-gray-800 border border-gray-600 text-white mb-4 focus:ring-2 focus:ring-amber-500 text-center"
           />
           <button
             onClick={handleLogin}
