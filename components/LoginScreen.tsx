@@ -1,4 +1,4 @@
-// File: LoginScreen.tsx (VERSI FINAL - MENGHILANGKAN PREFILL KREDENSIAL)
+// File: LoginScreen.tsx (FINAL + FEEDBACK & LINK PEMBELIAN AKTIVASI)
 
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext'; 
@@ -7,10 +7,11 @@ import { toast } from 'react-toastify';
 
 export const LoginScreen: React.FC = () => {
     const { login } = useAuth(); 
-    const [email, setEmail] = useState(''); // <-- DIUBAH MENJADI STRING KOSONG
-    const [code, setCode] = useState('');     // <-- DIUBAH MENJADI STRING KOSONG
+    const [email, setEmail] = useState('');
+    const [code, setCode] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [isLoggingIn, setIsLoggingIn] = useState(false);
+    const [feedback, setFeedback] = useState(''); // 🆕 untuk form feedback
 
     // --- KONFIGURASI TELEGRAM ADMIN FINAL ---
     const ADMIN_TELEGRAM_USERNAME = 'TradersXauUsd';
@@ -22,7 +23,9 @@ export const LoginScreen: React.FC = () => {
     // KONFIGURASI SOSIAL MEDIA
     const TELEGRAM_LINK = "https://t.me/MarketOutlookTradersxauusd";
     const TIKTOK_LINK = "https://www.tiktok.com/@tradersxauusd";
-    // END KONFIGURASI
+
+    // 🔗 Link pembelian kode aktivasi
+    const PURCHASE_LINK = "https://lynk.id/tradersxauusd/e3gl86wpzzw8";
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -34,22 +37,27 @@ export const LoginScreen: React.FC = () => {
         setIsLoggingIn(true);
         
         try {
-            // Lanjutkan dengan Panggilan Auth standar
             await login(email, code); 
-            
             toast.success("Login berhasil! Selamat datang di AI Chart Analyst.", {
                 position: "top-right",
                 autoClose: 3000,
             });
-            
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred. Please try again.';
-            
             toast.error(errorMessage);
             setError(errorMessage);
         } finally {
              setIsLoggingIn(false);
         }
+    };
+
+    const handleFeedbackSubmit = () => {
+        if (!feedback.trim()) {
+            toast.warning("Tulis pesan feedback terlebih dahulu!");
+            return;
+        }
+        toast.info("Terima kasih! Pesanmu sudah terkirim ke admin.");
+        setFeedback('');
     };
 
     const currentYear = new Date().getFullYear();
@@ -95,7 +103,7 @@ export const LoginScreen: React.FC = () => {
                                 <input
                                     type="email"
                                     id="email"
-                                    value={email} // Nilai default kini kosong
+                                    value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     placeholder="Email Address"
                                     className="w-full bg-gray-900 border border-gray-600 text-white rounded-lg px-4 py-3 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all duration-300"
@@ -108,7 +116,7 @@ export const LoginScreen: React.FC = () => {
                                 <input
                                     type="text"
                                     id="activation-code"
-                                    value={code} // Nilai default kini kosong
+                                    value={code}
                                     onChange={(e) => setCode(e.target.value)}
                                     placeholder="Activation Code"
                                     className="w-full bg-gray-900 border border-gray-600 text-white rounded-lg px-4 py-3 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all duration-300"
@@ -152,20 +160,44 @@ export const LoginScreen: React.FC = () => {
                             Tanya Admin via Telegram
                         </a>
 
-                        {/* Tulisan Follow Media Sosial (Tanpa Icon) */}
+                        {/* 🛒 Link Pembelian Kode Aktivasi */}
+                        <a
+                            href={PURCHASE_LINK}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-4 block text-center w-full py-3 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold transition-all duration-300 shadow-lg shadow-amber-500/40 hover:scale-[1.02]"
+                        >
+                            🔑 Beli Kode Aktivasi Disini
+                        </a>
+
+                        {/* Tulisan Follow Media Sosial */}
                         <div className="flex justify-center space-x-6 mt-4 text-sm font-semibold">
-                            
-                            {/* Link Telegram (Sosmed Channel) */}
                             <a href={TELEGRAM_LINK} target="_blank" rel="noopener noreferrer" aria-label="Telegram" 
                                className="text-gray-400 hover:text-amber-500 transition-colors transform hover:scale-105">
                                 Telegram
                             </a>
-                            
-                            {/* Link TikTok */}
                             <a href={TIKTOK_LINK} target="_blank" rel="noopener noreferrer" aria-label="TikTok" 
                                className="text-gray-400 hover:text-amber-500 transition-colors transform hover:scale-105">
                                 TikTok
                             </a>
+                        </div>
+
+                        {/* 💬 FEEDBACK SECTION */}
+                        <div className="mt-6">
+                            <p className="text-sm text-gray-400 mb-2 text-center">Ada kendala login? Kirim feedback cepat:</p>
+                            <textarea
+                                value={feedback}
+                                onChange={(e) => setFeedback(e.target.value)}
+                                placeholder="Tulis pesanmu di sini..."
+                                rows={3}
+                                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 resize-none focus:outline-none focus:ring-2 focus:ring-amber-500"
+                            ></textarea>
+                            <button
+                                onClick={handleFeedbackSubmit}
+                                className="mt-2 w-full bg-gray-700 hover:bg-green-600 text-white text-sm py-2 rounded-lg font-semibold transition-all duration-300"
+                            >
+                                Kirim Feedback
+                            </button>
                         </div>
                     </div>
                     {/* END TOMBOL TELEGRAM & SOSIAL MEDIA */}

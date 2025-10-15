@@ -127,14 +127,6 @@ Pola Candlestick: [pola utama, misal: Bullish engulfing di area support]
 Indikator (MA, RSI, MACD): [sinyal indikator utama]
 Penjelasan Analisa & Strategi:
 [beri analisa logis dan strategi singkat]
-Rekomendasi Entry:
-Aksi: [Buy/Sell]
-Entry: [harga entri utama, misal: 2418.50]
-Stop Loss: [harga SL, misal: 2408.00]
-Take Profit 1: [misal: 2424.50]
-Take Profit 2: [misal: 2432.00]
-Take Profit 3: [misal: 2438.50]
----
 
 Aturan tambahan:
 - Bahasa profesional, ≤180 kata.
