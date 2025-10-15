@@ -1,63 +1,116 @@
-// File: api/analyze.ts (FINAL FIX MODEL NAME)
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-// MESIN BARU: Impor Pustaka AI Google
-import { GoogleGenerativeAI } from '@google/generative-ai';
+// 🔑 Ambil semua key Gemini dari environment Vercel
+const GEMINI_KEYS: string[] = [
+  process.env.GEMINI_API_KEY as string,
+  process.env.GEMINI_KEY_1 as string,
+  process.env.GEMINI_KEY_2 as string,
+  process.env.GEMINI_KEY_3 as string,
+].filter((key): key is string => Boolean(key));
 
-// --- KUNCI DIAMBIL DARI BRANKAS VERCELL ---
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+if (GEMINI_KEYS.length === 0) {
+  throw new Error("❌ No Gemini API keys found in Vercel environment!");
+}
 
-export default async function handler(
-  req: VercelRequest,
-  res: VercelResponse,
-) {
-  // Hanya izinkan metode POST
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method Not Allowed' });
+// 🧩 Fungsi untuk nyoba beberapa key sampai berhasil
+async function generateWithFallback(
+  prompt: string,
+  imageBase64: string,
+  mimeType: string
+): Promise<string> {
+  let lastError: Error | null = null;
+
+  for (let i = 0; i < GEMINI_KEYS.length; i++) {
+    const key = GEMINI_KEYS[i];
+    console.log(`🧠 Trying Gemini key [${i + 1}]`);
+
+    try {
+      const genAI = new GoogleGenerativeAI(key);
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+      // Timeout otomatis biar gak delay lama (15 detik)
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("⏱️ AI timeout")), 15000)
+      );
+
+      // ✅ Versi baru tanpa 'role'
+      const aiResponse = model.generateContent([
+        { text: prompt },
+        {
+          inlineData: {
+            data: imageBase64.split(",")[1],
+            mimeType,
+          },
+        },
+      ]);
+
+      const result: any = await Promise.race([aiResponse, timeoutPromise]);
+      const text = result?.response?.text?.();
+
+      if (text && text.trim()) {
+        console.log(`✅ Success with key [${i + 1}]`);
+        return text;
+      }
+
+      throw new Error("Empty response from Gemini.");
+    } catch (err: any) {
+      console.warn(`⚠️ Gemini key [${i + 1}] failed: ${err.message}`);
+      lastError = err;
+    }
   }
 
-  const { imageBase64, mimeType, pair, timeframe, risk } = req.body;
+  console.error("❌ All Gemini keys failed:", lastError);
+  throw new Error("All Gemini API keys failed or overloaded. Please try again later.");
+}
 
-  if (!GEMINI_API_KEY) {
-    console.error('Kunci API GEMINI tidak ditemukan di Environment Variables Vercel.');
-    return res.status(500).json({ error: 'Server Error: Kunci API Gemini hilang.' });
+// ⚙️ Handler utama (pakai Web API style untuk Vercel)
+export default async function handler(req: Request): Promise<Response> {
+  if (req.method !== "POST") {
+    return new Response(JSON.stringify({ error: "Method not allowed" }), {
+      status: 405,
+      headers: { "Content-Type": "application/json" },
+    });
   }
+
+  const body = await req.json();
+  const { imageBase64, mimeType, pair, timeframe, risk } = body;
+
+  if (!imageBase64 || !mimeType || !pair || !timeframe) {
+    return new Response(JSON.stringify({ error: "Missing required fields" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  // 🎯 Prompt profesional, ringkas, dan cepat
+  const prompt = `
+Kamu adalah seorang analis teknikal profesional dengan pengalaman lebih dari 10 tahun di pasar emas dan forex.
+Analisa chart ${pair} timeframe ${timeframe} dengan fokus pada strategi low risk dan efisiensi tinggi.
+
+Tulis hasil singkat, jelas, dan profesional (maks 6 poin):
+1. Trend Utama
+2. Support & Resistance utama
+3. Pola Candlestick penting
+4. Indikator utama dan sinyalnya
+5. Skenario Entry konservatif (Buy/Sell)
+6. Rekomendasi Entry, Stop Loss, Take Profit (3 level)
+
+Gunakan bahasa profesional dan tidak lebih dari 200 kata.
+`;
 
   try {
-    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    // PERBAIKAN KRUSIAL: Mengubah nama model ke versi yang stabil dan tersedia
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); 
-    // CATATAN: gemini-2.5-flash mendukung input gambar (vision)
-
-    const prompt = `Kamu adalah analis teknikal profesional. Analisa chart ${pair} pada timeframe ${timeframe} dengan risk profile ${risk}.
-
-    **TUGAS PENTING:** Berikan hasil analisa LENGKAP dalam format TEKS yang ketat dan terstruktur. Gunakan format label berikut secara persis untuk memastikan data dapat diproses:
-    1. Trend Utama: [Tuliskan trend di sini]
-    2. Support & Resistance: [Tuliskan level S&R di sini]
-    3. Pola Candlestick: [Tuliskan pola di sini, jika ada]
-    4. Indikator: [Tuliskan kondisi indikator di sini, jika relevan]
-    5. Penjelasan Analisa & Strategi: [Tuliskan penjelasan dan ringkasan strategi]
-    6. Rekomendasi Entry: Aksi: [Tuliskan Buy atau Sell secara persis] Entry: [Tuliskan angka harga entry] Rasional Entry: [Tuliskan alasan teknikal mengapa entry dilakukan] Stop Loss: [Tuliskan angka harga Stop Loss] Take Profit 1: [Tuliskan angka harga TP1] Take Profit 2: [Tuliskan angka harga TP2] Take Profit 3: [Tuliskan angka harga TP3]`;
-
-    const imagePart = {
-      inlineData: {
-        data: imageBase64.split(",")[1],
-        mimeType: mimeType,
-      },
-    };
-
-    const result = await model.generateContent([prompt, imagePart]);
-    const response = result.response;
-    const text = response.text();
-
-    if (!text) {
-      return res.status(500).json({ error: 'AI returned empty text.' });
-    }
-
-    return res.status(200).json({ text });
-
+    const text = await generateWithFallback(prompt, imageBase64, mimeType);
+    return new Response(JSON.stringify({ text }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
   } catch (error: any) {
-    console.error('API call error:', error);
-    return res.status(500).json({ error: 'Failed to get analysis. Detail: ' + error.message });
+    console.error("❌ AI Error:", error);
+    return new Response(
+      JSON.stringify({
+        error: error.message || "Failed to analyze chart. Please try again later.",
+      }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
   }
 }

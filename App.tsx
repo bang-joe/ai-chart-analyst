@@ -118,40 +118,63 @@ const MainApp: React.FC = () => {
   };
 
   const handleAnalyze = useCallback(async () => {
-    if (!imageBase64 || !pair || !timeframe) {
-      setError("Please upload an image and complete all fields.");
-      return;
-    }
+  if (!imageBase64 || !pair || !timeframe) {
+    setError("Please upload an image and complete all fields.");
+    return;
+  }
 
-    setError(null);
-    setIsLoading(true);
+  setError(null);
+  setIsLoading(true);
 
-    try {
-      const response = await fetch('/api/analyze', {
+  try {
+    let retries = 3; // 🟢 Auto retry 3 kali
+    let data: any = null;
+    let response: Response | null = null;
+
+    while (retries > 0) {
+      response = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageBase64, mimeType, pair, timeframe, risk }),
       });
 
-      const data = await response.json();
+      try {
+        data = await response.json();
+      } catch {
+        data = null;
+      }
 
-      if (!response.ok) throw new Error(data.error || 'Server error: Gagal mendapatkan analisa.');
-      const rawText = data.text;
-      if (!rawText) throw new Error("Server mengembalikan data kosong.");
+      // 🟢 Jika sukses atau respon ada text, berhenti retry
+      if (response.ok && data?.text) break;
 
-      toast.success("Analisis AI Selesai!", { position: "bottom-right" });
-      const parsed = parseAnalysisText(rawText, risk);
-      setAnalysis(parsed);
+      console.warn(`Retrying... (${4 - retries} of 3)`);
+      retries--;
 
-    } catch (err) {
-      console.error(err);
-      const errorMessage = err instanceof Error ? err.message : "Unknown error occurred.";
-      toast.error(errorMessage);
-      setError(errorMessage);
-    } finally {
-      setIsLoading(false);
+      if (retries > 0) {
+        toast.info("Server sibuk, mencoba lagi...", { position: "bottom-right" });
+        await new Promise((r) => setTimeout(r, 2500)); // tunggu 2.5 detik
+      }
     }
-  }, [imageBase64, mimeType, pair, timeframe, risk]);
+
+    if (!response?.ok || !data?.text) {
+      throw new Error("Server overload atau gagal merespons. Coba lagi nanti.");
+    }
+
+    const rawText = data.text;
+    toast.success("Analisis AI Selesai!", { position: "bottom-right" });
+    const parsed = parseAnalysisText(rawText, risk);
+    setAnalysis(parsed);
+
+  } catch (err) {
+    console.error(err);
+    const errorMessage =
+      err instanceof Error ? err.message : "Unknown error occurred.";
+    toast.error(errorMessage, { position: "bottom-right" });
+    setError(errorMessage);
+  } finally {
+    setIsLoading(false);
+  }
+}, [imageBase64, mimeType, pair, timeframe, risk]);
 
   // 🟢 Tambahan tombol manual untuk load analisa terakhir
   const handleLoadLast = () => {
