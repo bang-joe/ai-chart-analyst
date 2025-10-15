@@ -4,7 +4,7 @@ export const config = {
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// 🔑 Ambil semua key aktif
+// 🔑 Ambil semua key aktif dari environment Vercel
 const GEMINI_KEYS: string[] = [
   process.env.GEMINI_API_KEY,
   process.env.GEMINI_KEY_1,
@@ -25,18 +25,29 @@ async function generateWithFallback(
   let lastError: Error | null = null;
   const imageData = imageBase64.split(",")[1];
 
-  if (!imageData) throw new Error("Gambar tidak valid.");
+  if (!imageData) throw new Error("Gambar tidak valid atau kosong.");
   if (imageData.length > 20_000_000)
     throw new Error("Ukuran gambar terlalu besar (>20MB).");
 
   for (const [i, key] of GEMINI_KEYS.entries()) {
     try {
+      if (!key.startsWith("AIza")) {
+        console.warn(`🚫 Key [${i + 1}] format tidak valid, dilewati.`);
+        continue;
+      }
+
       const genAI = new GoogleGenerativeAI(key);
       const model = genAI.getGenerativeModel({
-        model: "gemini-1.5-flash-latest",
+        // ✅ Gunakan model baru yang aktif di project lo
+        model: "gemini-2.5-flash",
       });
 
-      const response = await model.generateContent({
+      // Timeout otomatis (maks 12 detik)
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("⏱️ AI timeout")), 12000)
+      );
+
+      const aiResponsePromise = model.generateContent({
         contents: [
           {
             role: "user",
@@ -48,16 +59,26 @@ async function generateWithFallback(
         ],
       });
 
-      const text = response?.response?.text?.();
-      if (text?.trim()) return text;
+      const result: any = await Promise.race([aiResponsePromise, timeoutPromise]);
+      const text = result?.response?.text?.();
+
+      if (text && text.trim()) {
+        console.log(`✅ Success dengan key [${i + 1}]`);
+        return text;
+      }
 
       throw new Error("Empty Gemini response.");
     } catch (err: any) {
-      console.error(`⚠️ Key ${i + 1} gagal:`, err.message);
+      console.error(`⚠️ Key [${i + 1}] gagal:`, err.message);
       lastError = err;
 
-      // Jika error dari Google sendiri (500), langsung stop loop
-      if (err.message.includes("Error from API")) break;
+      // Error API fatal, hentikan loop
+      if (
+        err.message.includes("API key not valid") ||
+        err.message.includes("Error from API") ||
+        err.message.includes("Bad Request")
+      )
+        break;
 
       await new Promise((r) => setTimeout(r, 1000));
     }
@@ -76,7 +97,7 @@ export default async function handler(req: any, res?: any) {
     const { imageBase64, mimeType, pair, timeframe, risk } = body;
 
     if (!imageBase64 || !mimeType || !pair || !timeframe) {
-      const error = { error: "Missing required fields" };
+      const error = { error: "Missing required fields." };
       if (res) return res.status(400).json(error);
       return new Response(JSON.stringify(error), {
         status: 400,
@@ -85,18 +106,18 @@ export default async function handler(req: any, res?: any) {
     }
 
     const prompt = `
-Kamu adalah analis teknikal berpengalaman 10 tahun di pasar emas & forex.
-Analisa chart ${pair} timeframe ${timeframe} dengan gaya profesional, fokus strategi efisien & low risk.
+Kamu adalah analis teknikal profesional berpengalaman lebih dari 10 tahun di pasar emas & forex.
+Analisa chart ${pair} timeframe ${timeframe} dengan fokus pada strategi efisien dan risiko rendah.
 
-Tuliskan hasil singkat & padat (maks 6 poin):
+Tuliskan hasil ringkas (maks 6 poin):
 1. Trend utama
-2. Support & Resistance
-3. Pola candlestick penting
-4. Indikator & sinyal
+2. Support & Resistance penting
+3. Pola candlestick utama
+4. Indikator dan sinyal dominan
 5. Skenario entry (Buy/Sell)
-6. Rekomendasi Entry, SL, TP (3 level)
+6. Rekomendasi Entry, Stop Loss, dan Take Profit (3 level)
 
-Gunakan bahasa profesional ≤ 200 kata.
+Gunakan bahasa profesional, maksimum 200 kata.
 `;
 
     const text = await generateWithFallback(prompt, imageBase64, mimeType);
