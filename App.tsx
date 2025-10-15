@@ -14,7 +14,7 @@ import { motion } from "framer-motion";
 import { AnalysisResult } from './components/AnalysisResult';
 
 
-// 🧩 Parsing hasil analisis AI (versi final & aman untuk semua format)
+// 🧩 Parsing hasil analisis AI (versi rapi + fix duplikasi & Strategi)
 const parseAnalysisText = (
   text: string,
   currentRiskProfile: "Low" | "Medium"
@@ -23,46 +23,23 @@ const parseAnalysisText = (
     const clean = (val: string | null | undefined): string =>
       (val || "").replace(/(\*|`|#|--)/g, "").trim();
 
-    // 🎯 Aksi / Entry / SL
     const aksi =
-      text.match(/Aksi\s*[:\-]?\s*(Buy|Sell)/i)?.[1] ||
-      text.match(/Fokus\s*(Buy|Sell)/i)?.[1] ||
-      "Buy";
-
+      text.match(/Aksi\s*[:\-]?\s*(Buy|Sell)/i)?.[1] || "Buy";
     const entry =
-      text.match(/Entry\s*[:\-]?\s*([\d.,]+)/i)?.[1] ||
-      text.match(/Entry\s*Buy\s*[:\-]?\s*([\d.,]+)/i)?.[1] ||
-      "-";
-
+      text.match(/Entry\s*[:\-]?\s*([\d.,]+)/i)?.[1] || "-";
     const sl =
       text.match(/Stop\s*Loss\s*[:\-]?\s*([\d.,]+)/i)?.[1] ||
-      text.match(/\bSL\s*[:\-]?\s*([\d.,]+)/i)?.[1] ||
-      "-";
+      text.match(/\bSL\s*[:\-]?\s*([\d.,]+)/i)?.[1] || "-";
 
-    // 🔍 Ambil semua TP versi lama (TP1, TP2, TP3)
+    // 🎯 Ambil semua Take Profit
     const tp1 = text.match(/\bTake Profit 1\s*[:\-]?\s*([\d.,]+)/i);
     const tp2 = text.match(/\bTake Profit 2\s*[:\-]?\s*([\d.,]+)/i);
     const tp3 = text.match(/\bTake Profit 3\s*[:\-]?\s*([\d.,]+)/i);
 
-    const tpsMatches = [tp1, tp2, tp3].filter(
-      (m): m is RegExpMatchArray => Boolean(m && m[1])
-    );
-    const tps = tpsMatches.map((m) => clean(m[1]));
+    const tps = [tp1, tp2, tp3]
+      .filter((m): m is RegExpMatchArray => Boolean(m && m[1]))
+      .map((m) => clean(m[1]));
 
-    // 🔄 Ambil format baru “Take Profit: 2424, 2432, 2438”
-    const tpSingleLine = text.match(/\bTake Profit\s*[:\-]?\s*([\d.,\s]+)/i);
-    let tpsFromSingleLine: string[] = [];
-    if (tpSingleLine && tpSingleLine[1]) {
-      tpsFromSingleLine = tpSingleLine[1]
-        .split(/[,\s]+/)
-        .map((tp) => tp.trim())
-        .filter(Boolean);
-    }
-
-    // ✅ Pilih mana yang tersedia
-    const finalTps = tps.length > 0 ? tps : tpsFromSingleLine;
-
-    // 🧠 Tambahan informasi analisa umum
     const trend =
       text.match(/\bTrend Utama\s*[:\-]?\s*(.*)/i)?.[1] || "-";
     const supportResistance =
@@ -71,13 +48,17 @@ const parseAnalysisText = (
       text.match(/\bPola Candlestick\s*[:\-]?\s*(.*)/i)?.[1] || "-";
     const indicators =
       text.match(/\bIndikator\s*[:\-]?\s*(.*)/i)?.[1] || "-";
-    const explanation =
-      text.match(/\bPenjelasan Analisa\s*[:\-]?\s*(.*)/i)?.[1] ||
-      text.match(/\bAnalisa Singkat\s*[:\-]?\s*(.*)/i)?.[1] ||
-      "AI tidak memberikan penjelasan tambahan.";
 
-    // 🚨 Validasi minimal biar gak error parsing
-    if (!aksi && !entry && !sl && finalTps.length === 0) {
+    // 🧼 Fix bagian Penjelasan Analisa biar gak duplikat "& Strategi"
+    let explanation =
+      text.match(/\bPenjelasan Analisa\s*&?\s*Strategi\s*[:\-]?\s*([\s\S]*)/i)
+        ?.[1] || "-";
+    explanation = clean(explanation)
+      .replace(/^&?\s*Strategi[:\s]*/i, "")
+      .replace(/&\s*Strategi:?/gi, "")
+      .trim();
+
+    if (!aksi || !entry || !sl || tps.length === 0) {
       console.error("DEBUG: Missing Trade Data:", text);
       throw new Error(
         "Invalid AI format — missing crucial trade data (Aksi, Entry, SL, or TP)."
@@ -89,13 +70,13 @@ const parseAnalysisText = (
       supportResistance: clean(supportResistance),
       candlestick: clean(candlestick),
       indicators: clean(indicators),
-      explanation: clean(explanation),
+      explanation: explanation || "-",
       recommendation: {
         action: clean(aksi) as "Buy" | "Sell",
         entry: clean(entry),
         entryRationale: "",
         stopLoss: clean(sl),
-        takeProfit: finalTps.length > 0 ? finalTps : ["-"],
+        takeProfit: tps,
         riskProfile: currentRiskProfile,
       },
     };
@@ -108,7 +89,6 @@ const parseAnalysisText = (
     );
   }
 };
-
 
 // 🧠 Komponen utama aplikasi (AI Analyzer)
 const MainApp: React.FC = () => {
