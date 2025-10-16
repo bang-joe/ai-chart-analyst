@@ -1,68 +1,45 @@
-// File: utils/supabase-client.ts (FINAL PRODUCTION-READY VERSION)
-// 💡 Versi ini aman, stabil, dan auto-sync antar halaman & komponen
+// File: utils/supabase-client.ts (FINAL PRODUCTION SAFE VERSION)
 
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-// 🔐 Ambil environment variable dari Vercel
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL!;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY!;
+// 🧩 Variabel lingkungan dari Vite
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// 🧱 Singleton Supabase Client biar gak reinit setiap render
-let supabase: SupabaseClient | null = null;
+// ✅ Gunakan Singleton agar tidak inisialisasi ulang setiap kali file diimpor
+let supabaseClient: SupabaseClient | null = null;
 
 /**
- * Inisialisasi Supabase hanya sekali.
- * Menjamin session sinkron antar komponen (Login, AdminPanel, dsb)
+ * Inisialisasi Supabase Client hanya sekali
  */
 function initSupabase(): SupabaseClient {
-  if (supabase) return supabase;
-
   if (!supabaseUrl || !supabaseAnonKey) {
-    console.error("❌ Supabase credentials missing in environment variables.");
-    throw new Error("Missing Supabase credentials. Check Vercel environment settings.");
+    console.error("❌ Supabase env vars (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY) hilang!");
+    throw new Error("Missing Supabase credentials. Pastikan .env sudah benar.");
   }
 
-  supabase = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
-      storageKey: "sb-tradersxauusd-auth", // ⚙️ gunakan key unik biar session gak bentrok
-    },
-    global: {
-      fetch: async (url, options) => {
-        // Tambahan proteksi agar fetch error lebih mudah dideteksi
-        const res = await fetch(url, options);
-        if (!res.ok) console.warn("🌐 Supabase fetch warning:", res.status, url);
-        return res;
+  if (!supabaseClient) {
+    supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: true,
+        detectSessionInUrl: true,
       },
-    },
-  });
-
-  // 🔄 Auto-refresh session listener (anti expired)
-supabase.auth.onAuthStateChange(async (event, session) => {
-  if (event === "TOKEN_REFRESHED") {
-    console.log("🔁 Token Supabase diperbarui otomatis.");
-  } else if (event === "SIGNED_OUT") {
-    console.warn("🚪 Sesi habis atau logout manual.");
-  } else if (event === "SIGNED_IN") {
-    console.log("✅ Session aktif kembali setelah refresh.");
+    });
+    console.log("✅ Supabase client initialized.");
   }
-});
 
-
-  console.log("✅ Supabase client initialized (shared instance).");
-  return supabase;
+  return supabaseClient;
 }
 
 /**
- * Helper universal agar semua file pakai instance sama
+ * Helper universal untuk akses instance Supabase yang aman
  */
-export const getSupabase = (): SupabaseClient => initSupabase();
+export const getSupabase = (): SupabaseClient => {
+  return initSupabase();
+};
 
-/**
- * Default export (untuk import cepat)
- * Gunakan: import { supabase } from "../utils/supabase-client";
- */
-export const supabaseClient = getSupabase();
-export { supabaseClient as supabase };
+// ✅ Export default instance agar kompatibel dengan semua import lama
+export const supabase = getSupabase();
+
+// Alias opsional untuk backward compatibility
+export const client = supabase;

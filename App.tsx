@@ -1,5 +1,4 @@
-// File: App.tsx (FINAL FIXED PARSER + SESSION AUTO REFRESH)
-
+// File: App.tsx (FINAL FIX + RESTORE LAST STATE + LOAD LAST ANALYSIS)
 import 'react-toastify/dist/ReactToastify.css';
 import { ToastContainer, toast } from 'react-toastify';
 import React, { useState, useEffect, useCallback } from "react";
@@ -12,91 +11,61 @@ import type { Analysis } from "./types";
 import { Footer } from "./components/Footer";
 import AdminPanel from "./components/AdminPanel";
 import { motion } from "framer-motion";
-import { supabase } from "./utils/supabase-client";
 import { AnalysisResult } from './components/AnalysisResult';
 
-// 🧩 Parsing hasil analisis AI (bersih & fleksibel, pisah rekomendasi)
-const parseAnalysisText = (
-  text: string,
-  currentRiskProfile: "Low" | "Medium"
-): Analysis | null => {
+// 🧩 Parsing hasil analisis AI
+const parseAnalysisText = (text: string, currentRiskProfile: "Low" | "Medium"): Analysis | null => {
   try {
-    const clean = (val: string | null | undefined): string =>
-      (val || "").replace(/(\*|`|#|--)/g, "").trim();
+    const extractAndClean = (matchResult: RegExpMatchArray | null, fallback: string = "N/A") => {
+      if (!matchResult || !matchResult[1]) return fallback;
+      return matchResult[1].replace(/(\n\s*\*|\*|--|`|#)/g, " ").replace(/\s+/g, " ").trim();
+    };
 
-    const aksi =
-      text.match(/Aksi\s*[:\-]?\s*(Buy|Sell)/i)?.[1] || "Buy";
+    const trendMatch = text.match(/\bTrend Utama\s*[:\s]+([\s\S]*?)(?=\n\s*\d\.|\n---|\n\s*$)/i);
+    const srMatch = text.match(/\bSupport & Resistance\s*[:\s]+([\s\S]*?)(?=\n\s*\d\.|\n---|\n\s*$)/i);
+    const candleMatch = text.match(/\bPola Candlestick\s*[:\s]+([\s\S]*?)(?=\n\s*\d\.|\n---|\n\s*$)/i);
+    const indMatch = text.match(/\bIndikator\s*[:\s]+([\s\S]*?)(?=\n\s*\d\.|\n---|\n\s*$)/i);
+    const expMatch = text.match(/\bPenjelasan Analisa & Strategi\s*[:\s]+([\s\S]*?)(?=\n\s*\d\.|\n---|\n\s*$)/i);
 
-    // ✅ Tangkap semua variasi gaya entry (Entry, Buy Limit, Sell Stop, dll.)
-    const entry =
-      text.match(/\b(?:Entry|Buy\s+Limit|Sell\s+Limit|Buy\s+Stop|Sell\s+Stop)\s*[@:\-]?\s*([\d.,]+)/i)?.[1] || "-";
+    const recMatch = text.match(/\bRekomendasi Entry\s*[:\s]*([\s\S]*)/i);
+    const recText = recMatch ? recMatch[1] : "";
 
-    // ✅ Tangkap SL dari berbagai format
-    const sl =
-      text.match(/\b(?:Stop\s*Loss|SL|Stop)\s*[@:\-]?\s*([\d.,]+)/i)?.[1] || "-";
+    const actionMatch = recText.match(/\bAksi\s*:\s*(Buy|Sell)/i);
+    const entryMatch = recText.match(/\bEntry\s*:\s*([\d.,-]+)/i);
+    const reasonMatch = recText.match(/\bRasional Entry\b\s*:\s*(.*)/i);
+    const slMatch = text.match(/\bStop Loss\s*:\s*([\d.,-]+)/i);
+    const tp1 = recText.match(/\bTake Profit 1\s*:\s*([\d.,-]+)/i);
+    const tp2 = recText.match(/\bTake Profit 2\s*:\s*([\d.,-]+)/i);
+    const tp3 = recText.match(/\bTake Profit 3\s*:\s*([\d.,-]+)/i);
+    const tps = [tp1, tp2, tp3].filter(Boolean).map((m) => m![1].trim());
 
-    // ✅ Tangkap semua Take Profit
-    const tpMatches = Array.from(
-      text.matchAll(/\bTake\s*Profit\s*\d*\s*[@:\-]?\s*([\d.,]+)/gi)
-    );
-    const tps = tpMatches.map((m) => clean(m[1]));
-
-    const trend =
-      text.match(/\bTrend Utama\s*[:\-]?\s*(.*)/i)?.[1] || "-";
-    const supportResistance =
-      text.match(/\bSupport\s*&\s*Resistance\s*[:\-]?\s*(.*)/i)?.[1] || "-";
-    const candlestick =
-      text.match(/\bPola Candlestick\s*[:\-]?\s*(.*)/i)?.[1] || "-";
-    const indicators =
-      text.match(/\bIndikator\s*[:\-]?\s*(.*)/i)?.[1] || "-";
-
-    // 🧼 Ambil penjelasan strategi tapi bersihkan baris Entry/SL/TP dari dalamnya
-    let explanation =
-      text.match(/\bPenjelasan Analisa\s*&?\s*Strategi\s*[:\-]?\s*([\s\S]*)/i)
-        ?.[1] || "-";
-    explanation = clean(explanation)
-      .replace(/^&?\s*Strategi[:\s]*/i, "")
-      .replace(/&\s*Strategi:?/gi, "")
-      .replace(/Entry\s*[:@\-]?.*/gi, "")
-      .replace(/Stop\s*Loss\s*[:@\-]?.*/gi, "")
-      .replace(/Take\s*Profit\s*\d*\s*[:@\-]?.*/gi, "")
-      .replace(/TP\d*[:@\-]?.*/gi, "")
-      .trim();
-
-    if (!aksi || !entry || !sl || tps.length === 0) {
-      console.error("DEBUG: Missing Trade Data:", text);
-      throw new Error(
-        "Invalid AI format — missing crucial trade data (Aksi, Entry, SL, or TP)."
-      );
+    if (!actionMatch || !entryMatch || !slMatch || tps.length === 0) {
+      console.error("DEBUG: Missing Trade Data. Text:", recText);
+      throw new Error("Invalid AI format — missing crucial trade data (Aksi, Entry, SL, or TP).");
     }
 
     return {
-      trend: clean(trend),
-      supportResistance: clean(supportResistance),
-      candlestick: clean(candlestick),
-      indicators: clean(indicators),
-      explanation: explanation || "-", // ✅ sudah bersih tanpa rekomendasi angka
+      trend: extractAndClean(trendMatch),
+      supportResistance: extractAndClean(srMatch),
+      candlestick: extractAndClean(candleMatch),
+      indicators: extractAndClean(indMatch),
+      explanation: extractAndClean(expMatch),
       recommendation: {
-        action: clean(aksi) as "Buy" | "Sell",
-        entry: clean(entry),
-        entryRationale: "",
-        stopLoss: clean(sl),
-        takeProfit: tps.length > 0 ? tps : ["-"],
+        action: extractAndClean(actionMatch) as 'Buy' | 'Sell',
+        entry: entryMatch[1].trim(),
+        entryRationale: extractAndClean(reasonMatch) === "N/A" ? "" : extractAndClean(reasonMatch),
+        stopLoss: slMatch[1].trim(),
+        takeProfit: tps,
         riskProfile: currentRiskProfile,
       },
     };
   } catch (err) {
     console.error("❌ Failed to parse AI output:", err);
-    throw new Error(
-      err instanceof Error
-        ? err.message
-        : "AI analysis format invalid or incomplete. Please retry."
-    );
+    throw new Error(err instanceof Error ? err.message : "AI analysis format invalid or incomplete. Please retry.");
   }
 };
-;
 
-// 🧠 Komponen utama aplikasi
+// 🧠 Komponen utama aplikasi (AI Analyzer)
 const MainApp: React.FC = () => {
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [mimeType, setMimeType] = useState<string>("");
@@ -108,7 +77,7 @@ const MainApp: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
 
-  // Restore state
+  // 🟡 Restore state dari localStorage
   useEffect(() => {
     const savedPair = localStorage.getItem("pair");
     const savedTimeframe = localStorage.getItem("timeframe");
@@ -123,7 +92,7 @@ const MainApp: React.FC = () => {
     if (savedPreview) setPreview(savedPreview);
   }, []);
 
-  // Save otomatis
+  // 🟡 Simpan otomatis setiap perubahan
   useEffect(() => localStorage.setItem("pair", pair), [pair]);
   useEffect(() => localStorage.setItem("timeframe", timeframe), [timeframe]);
   useEffect(() => localStorage.setItem("risk", risk), [risk]);
@@ -158,54 +127,33 @@ const MainApp: React.FC = () => {
     setIsLoading(true);
 
     try {
-      let retries = 3;
-      let data: any = null;
-      let response: Response | null = null;
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64, mimeType, pair, timeframe, risk }),
+      });
 
-      while (retries > 0) {
-        response = await fetch("/api/analyze", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ imageBase64, mimeType, pair, timeframe, risk }),
-        });
+      const data = await response.json();
 
-        try {
-          data = await response.json();
-        } catch {
-          data = null;
-        }
-
-        if (response.ok && data?.text) break;
-
-        console.warn(`Retrying... (${4 - retries} of 3)`);
-        retries--;
-
-        if (retries > 0) {
-          toast.info("Server sibuk, mencoba lagi...", { position: "bottom-right" });
-          await new Promise((r) => setTimeout(r, 2500));
-        }
-      }
-
-      if (!response?.ok || !data?.text) {
-        throw new Error("Server overload atau gagal merespons. Coba lagi nanti.");
-      }
-
+      if (!response.ok) throw new Error(data.error || 'Server error: Gagal mendapatkan analisa.');
       const rawText = data.text;
+      if (!rawText) throw new Error("Server mengembalikan data kosong.");
+
       toast.success("Analisis AI Selesai!", { position: "bottom-right" });
       const parsed = parseAnalysisText(rawText, risk);
       setAnalysis(parsed);
 
     } catch (err) {
       console.error(err);
-      const errorMessage =
-        err instanceof Error ? err.message : "Unknown error occurred.";
-      toast.error(errorMessage, { position: "bottom-right" });
+      const errorMessage = err instanceof Error ? err.message : "Unknown error occurred.";
+      toast.error(errorMessage);
       setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
   }, [imageBase64, mimeType, pair, timeframe, risk]);
 
+  // 🟢 Tambahan tombol manual untuk load analisa terakhir
   const handleLoadLast = () => {
     try {
       const savedPair = localStorage.getItem("pair");
@@ -273,6 +221,7 @@ const MainApp: React.FC = () => {
             {isLoading ? "Analyzing..." : "Analyze Chart"}
           </button>
 
+          {/* 🟢 Tombol Load Last Analysis */}
           {localStorage.getItem("analysisResult") && (
             <button
               onClick={handleLoadLast}
@@ -306,7 +255,6 @@ const MainApp: React.FC = () => {
   );
 };
 
-
 // ⚙️ Loader layar penuh
 const FullScreenLoader: React.FC = () => (
   <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center">
@@ -315,22 +263,10 @@ const FullScreenLoader: React.FC = () => (
   </div>
 );
 
-
 // ⚙️ Wrapper utama (cek login + admin)
 const App: React.FC = () => {
   const { user, loading } = useAuth();
   const [showAdminPanel, setShowAdminPanel] = useState(false);
-
-  useEffect(() => {
-    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "TOKEN_REFRESHED") console.log("🔁 Token refreshed successfully.");
-      if (event === "SIGNED_OUT" || !session) {
-        console.warn("⚠️ Session expired or signed out.");
-        localStorage.removeItem("authUser");
-      }
-    });
-    return () => listener.subscription.unsubscribe();
-  }, []);
 
   if (loading) return <FullScreenLoader />;
 
