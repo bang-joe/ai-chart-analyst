@@ -16,45 +16,57 @@ import { AnalysisResult } from './components/AnalysisResult';
 // 🧩 Parsing hasil analisis AI
 const parseAnalysisText = (text: string, currentRiskProfile: "Low" | "Medium"): Analysis | null => {
   try {
-    const extractAndClean = (matchResult: RegExpMatchArray | null, fallback: string = "N/A") => {
-      if (!matchResult || !matchResult[1]) return fallback;
-      return matchResult[1].replace(/(\n\s*\*|\*|--|`|#)/g, " ").replace(/\s+/g, " ").trim();
-    };
+    // helper: bersihkan teks (hapus bullet, markdown noise) dan trim
+    const clean = (s: string | null | undefined) =>
+      (s || "").replace(/(\*|`|#{1,}|--)/g, " ").replace(/\s+/g, " ").trim();
 
-    const trendMatch = text.match(/\bTrend Utama\s*[:\s]+([\s\S]*?)(?=\n\s*\d\.|\n---|\n\s*$)/i);
-    const srMatch = text.match(/\bSupport & Resistance\s*[:\s]+([\s\S]*?)(?=\n\s*\d\.|\n---|\n\s*$)/i);
-    const candleMatch = text.match(/\bPola Candlestick\s*[:\s]+([\s\S]*?)(?=\n\s*\d\.|\n---|\n\s*$)/i);
-    const indMatch = text.match(/\bIndikator\s*[:\s]+([\s\S]*?)(?=\n\s*\d\.|\n---|\n\s*$)/i);
-    const expMatch = text.match(/\bPenjelasan Analisa & Strategi\s*[:\s]+([\s\S]*?)(?=\n\s*\d\.|\n---|\n\s*$)/i);
+    // Ambil bagian penjelasan (Penjelasan Analisa & Strategi) — sampai sebelum 'Rekomendasi Entry' atau akhir
+    const explanationMatch = text.match(/Penjelasan Analisa\s*(?:&|dan)?\s*Strategi\s*[:\-\s]*([\s\S]*?)(?=(\n.*Rekomendasi Entry|\n\s*\d+\.|\n---|\n\s*$))/i);
+    const explanationRaw = explanationMatch ? explanationMatch[1] : "";
 
-    const recMatch = text.match(/\bRekomendasi Entry\s*[:\s]*([\s\S]*)/i);
-    const recText = recMatch ? recMatch[1] : "";
+    // Ambil blok rekomendasi kalau ada
+    const recBlockMatch = text.match(/Rekomendasi Entry\s*[:\-\s]*([\s\S]*)/i);
+    const recRaw = recBlockMatch ? recBlockMatch[1] : "";
 
-    const actionMatch = recText.match(/\bAksi\s*:\s*(Buy|Sell)/i);
-    const entryMatch = recText.match(/\bEntry\s*:\s*([\d.,-]+)/i);
-    const reasonMatch = recText.match(/\bRasional Entry\b\s*:\s*(.*)/i);
-    const slMatch = text.match(/\bStop Loss\s*:\s*([\d.,-]+)/i);
-    const tp1 = recText.match(/\bTake Profit 1\s*:\s*([\d.,-]+)/i);
-    const tp2 = recText.match(/\bTake Profit 2\s*:\s*([\d.,-]+)/i);
-    const tp3 = recText.match(/\bTake Profit 3\s*:\s*([\d.,-]+)/i);
-    const tps = [tp1, tp2, tp3].filter(Boolean).map((m) => m![1].trim());
+    // Jika blok rekomendasi kosong, fallback: cari pola langsung di seluruh teks
+    const searchSource = recRaw && recRaw.trim() ? recRaw : text;
 
+    // Cari fields penting di blok rekomendasi (atau di seluruh text jika fallback)
+    const actionMatch = searchSource.match(/\bAksi\s*[:\-]?\s*(Buy|Sell)/i);
+    const entryMatch = searchSource.match(/\bEntry\s*[:\-]?\s*([0-9.,]+)/i);
+    const slMatch = searchSource.match(/\bStop(?:\s*)Loss\s*[:\-]?\s*([0-9.,]+)/i) || searchSource.match(/\bSL\s*[:\-]?\s*([0-9.,]+)/i);
+    const tp1 = searchSource.match(/\bTake Profit 1\s*[:\-]?\s*([0-9.,]+)/i) || searchSource.match(/\bTP1\s*[:\-]?\s*([0-9.,]+)/i);
+    const tp2 = searchSource.match(/\bTake Profit 2\s*[:\-]?\s*([0-9.,]+)/i) || searchSource.match(/\bTP2\s*[:\-]?\s*([0-9.,]+)/i);
+    const tp3 = searchSource.match(/\bTake Profit 3\s*[:\-]?\s*([0-9.,]+)/i) || searchSource.match(/\bTP3\s*[:\-]?\s*([0-9.,]+)/i);
+
+    const tps = [tp1, tp2, tp3].filter(Boolean).map((m) => clean((m as RegExpMatchArray)[1]));
+
+    // Validasi wajib: Aksi, Entry, SL, minimal 1 TP
     if (!actionMatch || !entryMatch || !slMatch || tps.length === 0) {
-      console.error("DEBUG: Missing Trade Data. Text:", recText);
+      console.error("DEBUG: Missing Trade Data. recommendation block/fallback:", searchSource);
       throw new Error("Invalid AI format — missing crucial trade data (Aksi, Entry, SL, or TP).");
     }
 
+    // Ambil bagian lain: Trend, Support&Resistance, Candlestick, Indikator
+    const trendMatch = text.match(/\bTrend Utama\s*[:\-\s]*([\s\S]*?)(?=\n\s*\d+\.|\n---|\n\s*$)/i);
+    const srMatch = text.match(/\bSupport\s*(?:&|dan)?\s*Resistance\s*[:\-\s]*([\s\S]*?)(?=\n\s*\d+\.|\n---|\n\s*$)/i);
+    const candleMatch = text.match(/\bPola Candlestick\s*[:\-\s]*([\s\S]*?)(?=\n\s*\d+\.|\n---|\n\s*$)/i);
+    const indMatch = text.match(/\bIndikator\s*[:\-\s]*([\s\S]*?)(?=\n\s*\d+\.|\n---|\n\s*$)/i);
+
+    // Bersihkan explanation supaya tidak menyertakan angka trade (ambil narasi saja)
+    const explanation = clean(explanationRaw).replace(/\b(Entry|Stop\s*Loss|SL|Take\s*Profit|TP)[\s\S]*/i, "").trim();
+
     return {
-      trend: extractAndClean(trendMatch),
-      supportResistance: extractAndClean(srMatch),
-      candlestick: extractAndClean(candleMatch),
-      indicators: extractAndClean(indMatch),
-      explanation: extractAndClean(expMatch),
+      trend: clean(trendMatch ? trendMatch[1] : ""),
+      supportResistance: clean(srMatch ? srMatch[1] : ""),
+      candlestick: clean(candleMatch ? candleMatch[1] : ""),
+      indicators: clean(indMatch ? indMatch[1] : ""),
+      explanation: explanation || "-",
       recommendation: {
-        action: extractAndClean(actionMatch) as 'Buy' | 'Sell',
-        entry: entryMatch[1].trim(),
-        entryRationale: extractAndClean(reasonMatch) === "N/A" ? "" : extractAndClean(reasonMatch),
-        stopLoss: slMatch[1].trim(),
+        action: (actionMatch ? clean(actionMatch[1]) : "Buy") as 'Buy' | 'Sell',
+        entry: entryMatch ? clean(entryMatch[1]) : "-",
+        entryRationale: "", // bisa ditambah parsing jika AI mengirim 'Rasional Entry'
+        stopLoss: slMatch ? clean((slMatch as RegExpMatchArray)[1]) : "-",
         takeProfit: tps,
         riskProfile: currentRiskProfile,
       },
