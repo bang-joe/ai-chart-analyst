@@ -123,23 +123,31 @@ export const AnalysisHistory: React.FC<AnalysisHistoryProps> = ({
         ))}
       </div>
 
-      {/* Modal detail */}
+      {/* 🧩 Modal detail fix — ditambah z-index tinggi biar di atas footer */}
       {selected && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-[90%] max-w-2xl shadow-xl relative">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+          {/* Backdrop hitam transparan */}
+          <div
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            onClick={() => setSelected(null)}
+          ></div>
+
+          {/* Konten modal */}
+          <div className="relative z-[10000] bg-gray-900 rounded-xl p-6 w-full max-w-2xl border border-gray-700 shadow-2xl">
             <button
               onClick={() => setSelected(null)}
               className="absolute top-3 right-3 text-gray-400 hover:text-white text-lg"
             >
               ✕
             </button>
+
             <h3 className="text-amber-400 font-bold text-lg mb-2">
               {selected.pair} ({selected.timeframe})
             </h3>
             <p className="text-sm text-gray-400 mb-4">
               Dibuat pada {new Date(selected.created_at).toLocaleString("id-ID")}
             </p>
-            <div className="text-gray-200 whitespace-pre-line text-sm leading-relaxed bg-gray-800/60 border border-gray-700 p-4 rounded-xl">
+            <div className="text-gray-200 whitespace-pre-line text-sm leading-relaxed bg-gray-800/60 border border-gray-700 p-4 rounded-xl max-h-[70vh] overflow-y-auto">
               {selected.ai_text}
             </div>
           </div>
