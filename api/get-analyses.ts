@@ -1,5 +1,5 @@
 // File: /api/get-analyses.ts
-import { supabase } from "../utils/supabase-client";
+import { supabase } from "@/utils/supabase-client";
 
 // Handler fungsi untuk mengambil data analisa user
 export default async function handler(req: any, res: any) {
