@@ -135,41 +135,51 @@ export const AnalysisHistory: React.FC<AnalysisHistoryProps> = ({
 
       {/* 🟡 Modal Detail (Z-index tinggi biar gak ketimpa disclaimer) */}
       {selected && (
-        <div
-          className="fixed inset-0 z-[99999] bg-black/70 backdrop-blur-sm flex items-center justify-center"
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-          }}
-        >
-          <div
-            className="bg-gray-900 rounded-xl p-6 w-full max-w-2xl relative shadow-2xl"
-            style={{ zIndex: 100000 }}
-          >
-            <button
-              onClick={() => setSelected(null)}
-              className="absolute top-3 right-3 text-gray-400 hover:text-white text-lg"
-            >
-              ✕
-            </button>
+  <div
+    className="fixed inset-0 flex items-center justify-center bg-black/90 backdrop-blur-sm z-[999999]"
+    style={{
+      position: "fixed",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      width: "100vw",
+      height: "100vh",
+    }}
+  >
+    {/* Area klik luar untuk close */}
+    <div
+      className="absolute inset-0"
+      onClick={() => setSelected(null)}
+      style={{ cursor: "pointer" }}
+    />
 
-            <h3 className="text-amber-400 font-bold text-lg mb-2">
-              {selected.pair} ({selected.timeframe})
-            </h3>
+    {/* Isi modal */}
+    <div
+      className="relative bg-gray-900 rounded-xl p-6 w-[90%] sm:w-full max-w-2xl shadow-2xl border border-gray-700 z-[100000] overflow-y-auto max-h-[85vh]"
+      onClick={(e) => e.stopPropagation()} // biar klik di dalam gak nutup
+    >
+      <button
+        onClick={() => setSelected(null)}
+        className="absolute top-3 right-3 text-gray-400 hover:text-white text-lg"
+      >
+        ✕
+      </button>
 
-            <p className="text-sm text-gray-400 mb-4">
-              Dibuat pada {new Date(selected.created_at).toLocaleString("id-ID")}
-            </p>
+      <h3 className="text-amber-400 font-bold text-lg mb-2">
+        {selected.pair} ({selected.timeframe})
+      </h3>
 
-            <div className="text-gray-200 whitespace-pre-line text-sm leading-relaxed bg-gray-800/60 border border-gray-700 p-4 rounded-xl overflow-y-auto max-h-[80vh]">
-              {selected.ai_text}
-            </div>
-          </div>
-        </div>
-      )}
+      <p className="text-sm text-gray-400 mb-4">
+        Dibuat pada {new Date(selected.created_at).toLocaleString("id-ID")}
+      </p>
+
+      <div className="text-gray-200 whitespace-pre-line text-sm leading-relaxed bg-gray-800/60 border border-gray-700 p-4 rounded-xl overflow-y-auto max-h-[70vh]">
+        {selected.ai_text}
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 };
