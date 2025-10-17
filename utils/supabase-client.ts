@@ -1,9 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 
-// ✅ Gunakan variabel dari server (process.env) dulu,
-// fallback ke Vite environment kalau dijalankan di browser.
+// ✅ Gunakan variabel dari environment server (process.env),
+// fallback ke Vite environment jika dijalankan di browser.
 const supabaseUrl =
   process.env.SUPABASE_URL ||
+  process.env.NEXT_PUBLIC_SUPABASE_URL ||
   import.meta?.env?.VITE_SUPABASE_URL ||
   "";
 
@@ -24,6 +25,6 @@ if (!supabaseKey) {
   throw new Error("Missing Supabase Key");
 }
 
-console.log("✅ Supabase initialized with URL:", supabaseUrl);
+console.log("✅ Supabase client initialized");
 
 export const supabase = createClient(supabaseUrl, supabaseKey);

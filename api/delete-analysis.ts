@@ -1,5 +1,5 @@
 // File: /api/delete-analysis.ts
-import { supabase } from "@/utils/supabase-client";
+import { supabase } from "../utils/supabase-client";
 
 export default async function handler(req: any, res: any) {
   try {

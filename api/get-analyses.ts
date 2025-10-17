@@ -1,5 +1,5 @@
 // File: /api/get-analyses.ts
-import { supabase } from "@/utils/supabase-client";
+import { supabase } from "../utils/supabase-client";
 
 export const config = {
   runtime: "nodejs",
