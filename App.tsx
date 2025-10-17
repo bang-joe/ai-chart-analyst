@@ -249,7 +249,10 @@ try {
   };
 
   return (
+  <>
+    {/* Grid utama: Upload & Configure + AI Analysis */}
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-fade-in-up">
+      {/* Kolom kiri */}
       <div className="bg-gray-800/50 p-6 rounded-2xl shadow-lg border border-gray-700 backdrop-blur-sm">
         <h2 className="text-2xl font-bold text-white mb-6">1. Upload & Configure</h2>
         <ImageUploader previewUrl={preview} onChange={handleFile} />
@@ -295,7 +298,7 @@ try {
             {isLoading ? "Analyzing..." : "Analyze Chart"}
           </button>
 
-          {/* 🟢 Tombol Load Last Analysis */}
+          {/* Tombol Load Last Analysis */}
           {localStorage.getItem("analysisResult") && (
             <button
               onClick={handleLoadLast}
@@ -307,6 +310,7 @@ try {
         </div>
       </div>
 
+      {/* Kolom kanan: AI Analysis */}
       <div className="bg-gray-800/50 p-6 rounded-2xl shadow-lg border border-gray-700 backdrop-blur-sm relative overflow-hidden">
         <h2 className="text-2xl font-bold text-white mb-6">2. AI Analysis</h2>
         {isLoading && (
@@ -323,7 +327,14 @@ try {
           {!isLoading && !error && !analysis && (
             <p className="text-gray-400">Upload chart dan klik "Analyze Chart" untuk memulai analisis AI.</p>
           )}
-          {user?.uid && (
+        </div>
+      </div>
+    </div>
+
+    {/* Riwayat Analisa - Sekarang di luar kolom utama */}
+    {user?.uid && (
+      <div className="mt-10 bg-gray-800/50 p-6 rounded-2xl shadow-lg border border-gray-700 backdrop-blur-sm">
+        <h2 className="text-xl font-semibold text-white mb-4">📜 Riwayat Analisa</h2>
         <AnalysisHistory
           user_uid={user.uid}
           onLoadAnalysis={(a) => {
@@ -336,11 +347,11 @@ try {
             toast.info(`Analisa ${a.pair} (${a.timeframe}) dimuat ulang!`);
           }}
         />
-      )}
-        </div>
       </div>
-    </div>
-  );
+    )}
+  </>
+);
+
 };
 
 // ⚙️ Loader layar penuh
