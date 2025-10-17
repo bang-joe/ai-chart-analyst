@@ -6,7 +6,7 @@ import { toast } from "react-toastify";
 
 interface AnalysisHistoryProps {
   user_uid: string;
-  onLoadAnalysis?: (analysis: any) => void; // untuk "Buka Ulang"
+  onLoadAnalysis?: (analysis: any) => void;
 }
 
 interface AnalysisRecord {
@@ -45,11 +45,12 @@ export const AnalysisHistory: React.FC<AnalysisHistoryProps> = ({
     fetchData();
   }, [user_uid]);
 
-  // 🗑️ Hapus analisa
   const handleDelete = async (id: string) => {
     if (!confirm("Yakin mau hapus analisa ini?")) return;
     try {
-      const res = await fetch(`/api/delete-analysis?id=${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/delete-analysis?id=${id}`, {
+        method: "DELETE",
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Gagal menghapus.");
       setAnalyses((prev) => prev.filter((a) => a.id !== id));
@@ -75,11 +76,19 @@ export const AnalysisHistory: React.FC<AnalysisHistoryProps> = ({
     );
 
   if (analyses.length === 0)
-    return <div className="text-gray-400 text-center py-8">Belum ada analisa tersimpan.</div>;
+    return (
+      <div className="text-gray-400 text-center py-8">
+        Belum ada analisa tersimpan.
+      </div>
+    );
 
+  // ✅ RETURN UTAMA (FIXED JSX)
   return (
     <div className="bg-gray-800/40 border border-gray-700 p-6 rounded-2xl shadow-lg mt-8">
-      <h2 className="text-xl font-semibold text-white mb-4">📜 Riwayat Analisa</h2>
+      <h2 className="text-xl font-semibold text-white mb-4">
+        📜 Riwayat Analisa
+      </h2>
+
       <div className="space-y-4">
         {analyses.map((a) => (
           <motion.div
@@ -99,6 +108,7 @@ export const AnalysisHistory: React.FC<AnalysisHistoryProps> = ({
                 })}
               </p>
             </div>
+
             <div className="flex gap-2">
               <button
                 onClick={() => setSelected(a)}
@@ -123,17 +133,22 @@ export const AnalysisHistory: React.FC<AnalysisHistoryProps> = ({
         ))}
       </div>
 
-      {/* 🧩 Modal detail fix — ditambah z-index tinggi biar di atas footer */}
+      {/* 🟡 Modal Detail (Z-index tinggi biar gak ketimpa disclaimer) */}
       {selected && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center">
-          {/* Backdrop hitam transparan */}
+        <div
+          className="fixed inset-0 z-[99999] bg-black/70 backdrop-blur-sm flex items-center justify-center"
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+          }}
+        >
           <div
-            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-            onClick={() => setSelected(null)}
-          ></div>
-
-          {/* Konten modal */}
-          <div className="relative z-[10000] bg-gray-900 rounded-xl p-6 w-full max-w-2xl border border-gray-700 shadow-2xl">
+            className="bg-gray-900 rounded-xl p-6 w-full max-w-2xl relative shadow-2xl"
+            style={{ zIndex: 100000 }}
+          >
             <button
               onClick={() => setSelected(null)}
               className="absolute top-3 right-3 text-gray-400 hover:text-white text-lg"
@@ -144,10 +159,12 @@ export const AnalysisHistory: React.FC<AnalysisHistoryProps> = ({
             <h3 className="text-amber-400 font-bold text-lg mb-2">
               {selected.pair} ({selected.timeframe})
             </h3>
+
             <p className="text-sm text-gray-400 mb-4">
               Dibuat pada {new Date(selected.created_at).toLocaleString("id-ID")}
             </p>
-            <div className="text-gray-200 whitespace-pre-line text-sm leading-relaxed bg-gray-800/60 border border-gray-700 p-4 rounded-xl max-h-[70vh] overflow-y-auto">
+
+            <div className="text-gray-200 whitespace-pre-line text-sm leading-relaxed bg-gray-800/60 border border-gray-700 p-4 rounded-xl overflow-y-auto max-h-[80vh]">
               {selected.ai_text}
             </div>
           </div>
