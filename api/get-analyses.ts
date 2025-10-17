@@ -17,6 +17,9 @@ export default async function handler(req: any, res: any) {
       .select("*")
       .eq("user_uid", user_uid)
       .order("created_at", { ascending: false });
+      console.log("DEBUG user_uid:", user_uid);
+      console.log("DEBUG data:", data);
+      console.log("DEBUG error:", error);
 
     if (error) {
       console.error("Supabase error:", error);
