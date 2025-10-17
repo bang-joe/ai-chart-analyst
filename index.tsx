@@ -1,4 +1,4 @@
-// File: index.tsx (FINAL FIX + Global Modal Layer)
+// File: index.tsx (FINAL FIX: Modal Layer & Global Sync)
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
@@ -20,10 +20,7 @@ const ErrorFallback: React.FC<{ error: Error }> = ({ error }) => (
   </div>
 );
 
-class AppErrorBoundary extends React.Component<
-  any,
-  { hasError: boolean; error: Error | null }
-> {
+class AppErrorBoundary extends React.Component<any, { hasError: boolean; error: Error | null }> {
   constructor(props: any) {
     super(props);
     this.state = { hasError: false, error: null };
@@ -34,7 +31,7 @@ class AppErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, errorInfo: any) {
-    console.error('Uncaught error:', error, errorInfo);
+    console.error("Uncaught error:", error, errorInfo);
   }
 
   render() {
@@ -45,41 +42,30 @@ class AppErrorBoundary extends React.Component<
   }
 }
 
+// --- CSS Global Fix untuk Modal Layer ---
+const globalStyle = document.createElement("style");
+globalStyle.innerHTML = `
+  /* Pastikan modal di atas footer & blur gak tembus */
+  .modal-overlay {
+    position: fixed !important;
+    inset: 0;
+    z-index: 99999 !important;
+    backdrop-filter: blur(6px);
+    background-color: rgba(0, 0, 0, 0.45);
+  }
+  .modal-container {
+    position: relative;
+    z-index: 100000 !important;
+  }
+`;
+document.head.appendChild(globalStyle);
+
 // --- Render utama ---
 const root = ReactDOM.createRoot(document.getElementById('root')!);
-
 root.render(
   <React.StrictMode>
     <AppErrorBoundary>
       <AuthProvider>
-        {/* 🌟 Global Style Fix agar modal selalu di atas footer/disclaimer */}
-        <style>{`
-          html, body, #root {
-            position: relative;
-            z-index: 0;
-            overflow-x: hidden;
-          }
-
-          /* Modal Layer */
-          .fixed[inset-0],
-          [data-overlay="true"],
-          .modal-overlay {
-            z-index: 99999 !important;
-            position: fixed !important;
-          }
-
-          .modal-content {
-            z-index: 100000 !important;
-            position: relative !important;
-          }
-
-          /* Footer atau disclaimer agar gak nembus modal */
-          footer, .footer {
-            z-index: 10 !important;
-            position: relative !important;
-          }
-        `}</style>
-
         <App />
       </AuthProvider>
     </AppErrorBoundary>

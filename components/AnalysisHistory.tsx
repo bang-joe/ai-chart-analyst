@@ -1,4 +1,4 @@
-// File: /components/AnalysisHistory.tsx
+// File: /components/AnalysisHistory.tsx (Modal Blur Fix + Layering)
 import React, { useEffect, useState } from "react";
 import { Loader } from "./Loader";
 import { motion } from "framer-motion";
@@ -48,9 +48,7 @@ export const AnalysisHistory: React.FC<AnalysisHistoryProps> = ({
   const handleDelete = async (id: string) => {
     if (!confirm("Yakin mau hapus analisa ini?")) return;
     try {
-      const res = await fetch(`/api/delete-analysis?id=${id}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(`/api/delete-analysis?id=${id}`, { method: "DELETE" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Gagal menghapus.");
       setAnalyses((prev) => prev.filter((a) => a.id !== id));
@@ -76,19 +74,11 @@ export const AnalysisHistory: React.FC<AnalysisHistoryProps> = ({
     );
 
   if (analyses.length === 0)
-    return (
-      <div className="text-gray-400 text-center py-8">
-        Belum ada analisa tersimpan.
-      </div>
-    );
+    return <div className="text-gray-400 text-center py-8">Belum ada analisa tersimpan.</div>;
 
-  // ✅ RETURN UTAMA (FIXED JSX)
   return (
     <div className="bg-gray-800/40 border border-gray-700 p-6 rounded-2xl shadow-lg mt-8">
-      <h2 className="text-xl font-semibold text-white mb-4">
-        📜 Riwayat
-      </h2>
-
+      <h2 className="text-xl font-semibold text-white mb-4">📜 Riwayat Analisa</h2>
       <div className="space-y-4">
         {analyses.map((a) => (
           <motion.div
@@ -108,7 +98,6 @@ export const AnalysisHistory: React.FC<AnalysisHistoryProps> = ({
                 })}
               </p>
             </div>
-
             <div className="flex gap-2">
               <button
                 onClick={() => setSelected(a)}
@@ -133,46 +122,38 @@ export const AnalysisHistory: React.FC<AnalysisHistoryProps> = ({
         ))}
       </div>
 
-      {/* 🟡 Modal Detail (Z-index tinggi biar gak ketimpa disclaimer) */}
+      {/* Modal detail */}
       {selected && (
-  <div
-    className="absolute inset-x-0 top-0 bottom-24 flex items-center justify-center z-[9999]" 
-    style={{
-      backgroundColor: "rgba(0, 0, 0, 0.45)",
-      backdropFilter: "blur(6px)",
-    }}
-    onClick={() => setSelected(null)}
-  >
-    <div
-      className="relative bg-gray-900 rounded-xl p-6 w-[90%] sm:w-full max-w-2xl shadow-2xl border border-gray-700 overflow-y-auto max-h-[80vh]"
-      onClick={(e) => e.stopPropagation()}
-      style={{
-        boxShadow: "0 0 40px rgba(0,0,0,0.4)",
-        transform: "translateY(0)",
-        transition: "all 0.2s ease",
-      }}
-    >
-      <button
-        onClick={() => setSelected(null)}
-        className="absolute top-3 right-3 text-gray-400 hover:text-white text-lg"
-      >
-        ✕
-      </button>
-
-      <h3 className="text-amber-400 font-bold text-lg mb-2">
-        {selected.pair} ({selected.timeframe})
-      </h3>
-
-      <p className="text-sm text-gray-400 mb-4">
-        Dibuat pada {new Date(selected.created_at).toLocaleString("id-ID")}
-      </p>
-
-      <div className="text-gray-200 whitespace-pre-line text-sm leading-relaxed bg-gray-800/60 border border-gray-700 p-4 rounded-xl overflow-y-auto max-h-[65vh]">
-        {selected.ai_text}
-      </div>
-    </div>
-  </div>
-)}
+        <div
+          className="modal-overlay flex items-center justify-center"
+          onClick={() => setSelected(null)}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="modal-container bg-gray-900 rounded-xl p-6 w-[90%] sm:w-full max-w-2xl relative border border-gray-700 shadow-2xl overflow-y-auto max-h-[80vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setSelected(null)}
+              className="absolute top-3 right-3 text-gray-400 hover:text-white text-lg"
+            >
+              ✕
+            </button>
+            <h3 className="text-amber-400 font-bold text-lg mb-2">
+              {selected.pair} ({selected.timeframe})
+            </h3>
+            <p className="text-sm text-gray-400 mb-4">
+              Dibuat pada {new Date(selected.created_at).toLocaleString("id-ID")}
+            </p>
+            <div className="text-gray-200 whitespace-pre-line text-sm leading-relaxed bg-gray-800/60 border border-gray-700 p-4 rounded-xl overflow-y-auto max-h-[65vh]">
+              {selected.ai_text}
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 };
