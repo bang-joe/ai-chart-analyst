@@ -12,6 +12,7 @@ import { Footer } from "./components/Footer";
 import AdminPanel from "./components/AdminPanel";
 import { motion } from "framer-motion";
 import { AnalysisResult } from './components/AnalysisResult';
+import { AnalysisHistory } from "./components/AnalysisHistory";
 
 // 🧩 Parsing hasil analisis AI
 // Replace the old parseAnalysisText with this function (paste as-is)
@@ -118,6 +119,8 @@ const parseAnalysisText = (
 
 // 🧠 Komponen utama aplikasi (AI Analyzer)
 const MainApp: React.FC = () => {
+  const { user } = useAuth(); // ✅ tambahkan ini
+
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [mimeType, setMimeType] = useState<string>("");
   const [pair, setPair] = useState("");
@@ -127,6 +130,7 @@ const MainApp: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+
 
   // 🟡 Restore state dari localStorage
   useEffect(() => {
@@ -193,6 +197,25 @@ const MainApp: React.FC = () => {
       toast.success("Analisis AI Selesai!", { position: "bottom-right" });
       const parsed = parseAnalysisText(rawText, risk);
       setAnalysis(parsed);
+
+      // 🟢 Simpan hasil analisa ke database Supabase
+try {
+  await fetch("/api/save-analysis", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      user_uid: user?.uid, // ambil dari AuthContext kamu
+      pair,
+      timeframe,
+      risk,
+      ai_text: rawText,
+      parsed_json: parsed,
+    }),
+  });
+  console.log("✅ Analysis saved to Supabase");
+} catch (saveErr) {
+  console.error("❌ Gagal menyimpan ke Supabase:", saveErr);
+}
 
     } catch (err) {
       console.error(err);
@@ -300,6 +323,20 @@ const MainApp: React.FC = () => {
           {!isLoading && !error && !analysis && (
             <p className="text-gray-400">Upload chart dan klik "Analyze Chart" untuk memulai analisis AI.</p>
           )}
+          {user?.uid && (
+        <AnalysisHistory
+          user_uid={user.uid}
+          onLoadAnalysis={(a) => {
+            setPair(a.pair);
+            setTimeframe(a.timeframe);
+            setRisk(a.risk as "Low" | "Medium");
+            setAnalysis(a.parsed_json || null);
+            setPreview(null);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+            toast.info(`Analisa ${a.pair} (${a.timeframe}) dimuat ulang!`);
+          }}
+        />
+      )}
         </div>
       </div>
     </div>
