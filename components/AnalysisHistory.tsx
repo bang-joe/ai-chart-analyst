@@ -100,7 +100,10 @@ export const AnalysisHistory: React.FC<AnalysisHistoryProps> = ({
             </div>
             <div className="flex gap-2">
               <button
-                onClick={() => setSelected(a)}
+                onClick={() => {
+                  document.body.classList.add("modal-open");
+                  setSelected(a);
+                }}
                 className="px-3 py-1 rounded-lg bg-gray-700 hover:bg-gray-600 text-white font-semibold"
               >
                 Lihat
@@ -126,7 +129,10 @@ export const AnalysisHistory: React.FC<AnalysisHistoryProps> = ({
       {selected && (
         <div
           className="modal-overlay flex items-center justify-center"
-          onClick={() => setSelected(null)}
+          onClick={() => {
+            document.body.classList.remove("modal-open");
+            setSelected(null);
+          }}
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
@@ -137,7 +143,10 @@ export const AnalysisHistory: React.FC<AnalysisHistoryProps> = ({
             onClick={(e) => e.stopPropagation()}
           >
             <button
-              onClick={() => setSelected(null)}
+              onClick={() => {
+                document.body.classList.remove("modal-open");
+                setSelected(null);
+              }}
               className="absolute top-3 right-3 text-gray-400 hover:text-white text-lg"
             >
               ✕

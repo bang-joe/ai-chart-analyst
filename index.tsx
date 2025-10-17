@@ -42,23 +42,23 @@ class AppErrorBoundary extends React.Component<any, { hasError: boolean; error: 
   }
 }
 
-// --- CSS Global Fix untuk Modal Layer ---
-const globalStyle = document.createElement("style");
-globalStyle.innerHTML = `
-  /* Pastikan modal di atas footer & blur gak tembus */
-  .modal-overlay {
-    position: fixed !important;
-    inset: 0;
-    z-index: 99999 !important;
-    backdrop-filter: blur(6px);
-    background-color: rgba(0, 0, 0, 0.45);
-  }
-  .modal-container {
-    position: relative;
-    z-index: 100000 !important;
-  }
-`;
-document.head.appendChild(globalStyle);
+/// --- Fix Global: Matikan interaksi & visibilitas elemen di luar modal ---
+const modalFix = () => {
+  const style = document.createElement("style");
+  style.innerHTML = `
+    /* Saat modal aktif, sembunyikan semua elemen fixed di luar modal */
+    body.modal-open footer,
+    body.modal-open [class*="disclaimer"],
+    body.modal-open [class*="footer"],
+    body.modal-open [class*="fixed"]:not(.modal-overlay):not(.modal-container) {
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
+  `;
+  document.head.appendChild(style);
+};
+modalFix();
+
 
 // --- Render utama ---
 const root = ReactDOM.createRoot(document.getElementById('root')!);
