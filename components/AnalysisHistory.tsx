@@ -86,7 +86,7 @@ export const AnalysisHistory: React.FC<AnalysisHistoryProps> = ({
   return (
     <div className="bg-gray-800/40 border border-gray-700 p-6 rounded-2xl shadow-lg mt-8">
       <h2 className="text-xl font-semibold text-white mb-4">
-        📜 Riwayat Analisa
+        📜 Riwayat
       </h2>
 
       <div className="space-y-4">
@@ -136,16 +136,16 @@ export const AnalysisHistory: React.FC<AnalysisHistoryProps> = ({
       {/* 🟡 Modal Detail (Z-index tinggi biar gak ketimpa disclaimer) */}
       {selected && (
   <div
-    className="fixed inset-0 flex items-center justify-center z-[9999]"
+    className="absolute inset-x-0 top-0 bottom-24 flex items-center justify-center z-[9999]" 
     style={{
       backgroundColor: "rgba(0, 0, 0, 0.45)",
       backdropFilter: "blur(6px)",
     }}
-    onClick={() => setSelected(null)} // klik luar = tutup
+    onClick={() => setSelected(null)}
   >
     <div
-      className="relative bg-gray-900 rounded-xl p-6 w-[90%] sm:w-full max-w-2xl shadow-2xl border border-gray-700 overflow-y-auto max-h-[85vh] animate-fade-in"
-      onClick={(e) => e.stopPropagation()} // biar klik dalam gak nutup
+      className="relative bg-gray-900 rounded-xl p-6 w-[90%] sm:w-full max-w-2xl shadow-2xl border border-gray-700 overflow-y-auto max-h-[80vh]"
+      onClick={(e) => e.stopPropagation()}
       style={{
         boxShadow: "0 0 40px rgba(0,0,0,0.4)",
         transform: "translateY(0)",
@@ -167,7 +167,7 @@ export const AnalysisHistory: React.FC<AnalysisHistoryProps> = ({
         Dibuat pada {new Date(selected.created_at).toLocaleString("id-ID")}
       </p>
 
-      <div className="text-gray-200 whitespace-pre-line text-sm leading-relaxed bg-gray-800/60 border border-gray-700 p-4 rounded-xl overflow-y-auto max-h-[70vh]">
+      <div className="text-gray-200 whitespace-pre-line text-sm leading-relaxed bg-gray-800/60 border border-gray-700 p-4 rounded-xl overflow-y-auto max-h-[65vh]">
         {selected.ai_text}
       </div>
     </div>
