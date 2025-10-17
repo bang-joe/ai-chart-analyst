@@ -136,28 +136,21 @@ export const AnalysisHistory: React.FC<AnalysisHistoryProps> = ({
       {/* 🟡 Modal Detail (Z-index tinggi biar gak ketimpa disclaimer) */}
       {selected && (
   <div
-    className="fixed inset-0 flex items-center justify-center bg-black/90 backdrop-blur-sm z-[999999]"
+    className="fixed inset-0 flex items-center justify-center z-[9999]"
     style={{
-      position: "fixed",
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      width: "100vw",
-      height: "100vh",
+      backgroundColor: "rgba(0, 0, 0, 0.45)",
+      backdropFilter: "blur(6px)",
     }}
+    onClick={() => setSelected(null)} // klik luar = tutup
   >
-    {/* Area klik luar untuk close */}
     <div
-      className="absolute inset-0"
-      onClick={() => setSelected(null)}
-      style={{ cursor: "pointer" }}
-    />
-
-    {/* Isi modal */}
-    <div
-      className="relative bg-gray-900 rounded-xl p-6 w-[90%] sm:w-full max-w-2xl shadow-2xl border border-gray-700 z-[100000] overflow-y-auto max-h-[85vh]"
-      onClick={(e) => e.stopPropagation()} // biar klik di dalam gak nutup
+      className="relative bg-gray-900 rounded-xl p-6 w-[90%] sm:w-full max-w-2xl shadow-2xl border border-gray-700 overflow-y-auto max-h-[85vh] animate-fade-in"
+      onClick={(e) => e.stopPropagation()} // biar klik dalam gak nutup
+      style={{
+        boxShadow: "0 0 40px rgba(0,0,0,0.4)",
+        transform: "translateY(0)",
+        transition: "all 0.2s ease",
+      }}
     >
       <button
         onClick={() => setSelected(null)}
