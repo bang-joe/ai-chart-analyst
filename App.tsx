@@ -13,6 +13,7 @@ import AdminPanel from "./components/AdminPanel";
 import { motion } from "framer-motion";
 import { AnalysisResult } from './components/AnalysisResult';
 import { AnalysisHistory } from "./components/AnalysisHistory";
+import TestimonialForm from "./components/TestimonialForm";
 
 // 🧩 Parsing hasil analisis AI
 // Replace the old parseAnalysisText with this function (paste as-is)
@@ -120,7 +121,6 @@ const parseAnalysisText = (
 // 🧠 Komponen utama aplikasi (AI Analyzer)
 const MainApp: React.FC = () => {
   const { user } = useAuth(); // ✅ tambahkan ini
-
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [mimeType, setMimeType] = useState<string>("");
   const [pair, setPair] = useState("");
@@ -349,10 +349,17 @@ try {
         />
       </div>
     )}
-  </>
-);
+  {/* 🔰 Form Kirim Testimoni */}
+{user?.email && (
+  <div className="mt-10">
+    <TestimonialForm userEmail={user.email} />
+  </div>
+)}
 
+</>
+);
 };
+
 
 // ⚙️ Loader layar penuh
 const FullScreenLoader: React.FC = () => (
