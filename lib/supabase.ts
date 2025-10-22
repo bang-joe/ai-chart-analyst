@@ -1,53 +1,56 @@
+// File: lib/supabase.ts
 import { createClient } from "@supabase/supabase-js";
 
-// langsung ambil dari environment (semua sudah diset di Vercel)
+// 🔧 Aman di browser & server
 const supabaseUrl =
-  process.env.SUPABASE_URL ||
-  process.env.VITE_SUPABASE_URL ||
-  "";
+  import.meta.env.VITE_SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const supabaseAnonKey =
-  process.env.SUPABASE_ANON_KEY ||
-  process.env.VITE_SUPABASE_ANON_KEY ||
-  "";
+  import.meta.env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// 🧩 Error handling agar build Vercel gak blank
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error("❌ Missing Supabase credentials", {
+    supabaseUrl,
+    supabaseAnonKey: supabaseAnonKey ? "present" : "missing",
+  });
+  throw new Error(
+    "Missing Supabase credentials. Please check VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in environment variables."
+  );
+}
 
-// ambil semua testimoni
-export async function getTestimonials() {
-  const { data, error } = await supabase
+// ✅ Client khusus untuk Testimonial Realtime
+export const supabaseTestimonials = createClient(supabaseUrl, supabaseAnonKey);
+
+// --- TESTIMONIAL FUNCTIONS ---
+
+// 🔹 Fetch semua testimoni (urut terbaru)
+export const getTestimonials = async () => {
+  const { data, error } = await supabaseTestimonials
     .from("testimonials")
-    .select("id, author, text, rating, created_at")
+    .select("*")
     .order("created_at", { ascending: false });
+
   if (error) {
-    console.error("getTestimonials error:", error);
+    console.error("⚠️ Error fetching testimonials:", error.message);
     return [];
   }
-  return data ?? [];
-}
+  return data || [];
+};
 
-// kirim testimoni (user login saja)
-export async function addTestimonial(user: any, text: string, rating: number) {
-  if (!user) throw new Error("User belum login.");
-  if (!text.trim()) throw new Error("Isi testimoni wajib diisi.");
-  if (rating < 1 || rating > 5) throw new Error("Rating harus antara 1–5.");
-
-  const { error } = await supabase.from("testimonials").insert([
-    { author: user.email, text, rating },
-  ]);
-  if (error) throw new Error(error.message);
-  return true;
-}
-
-// realtime listener
-export function subscribeTestimonials(onNew: (data: any) => void) {
-  const channel = supabase
-    .channel("realtime-testimonials")
+// 🔹 Subscribe realtime testimoni baru
+export const subscribeTestimonials = (callback: (data: any) => void) => {
+  const channel = supabaseTestimonials
+    .channel("realtime:testimonials")
     .on(
       "postgres_changes",
       { event: "INSERT", schema: "public", table: "testimonials" },
-      (payload) => onNew(payload.new)
+      (payload) => {
+        callback(payload.new);
+      }
     )
     .subscribe();
 
-  return () => supabase.removeChannel(channel);
-}
+  return () => {
+    supabaseTestimonials.removeChannel(channel);
+  };
+};
