@@ -1,8 +1,10 @@
 // File: components/LoginScreen.tsx (FINAL CLEAN + LINK AKTIVASI)
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { Logo } from "./Logo";
 import { toast } from "react-toastify";
+import { motion, AnimatePresence } from "framer-motion";
+import { getTestimonials, subscribeTestimonials } from "../lib/supabase";
 
 export const LoginScreen: React.FC = () => {
   const { login } = useAuth();
@@ -10,6 +12,43 @@ export const LoginScreen: React.FC = () => {
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+  // --- TESTIMONI REALTIME SLIDER (satu-satunya deklarasi) ---
+const [testimonials, setTestimonials] = useState<any[]>([]);
+const [currentIndex, setCurrentIndex] = useState(0);
+
+useEffect(() => {
+  let unsubscribe: (() => void) | null = null;
+
+  const fetchAndSubscribe = async () => {
+    try {
+      const data = await getTestimonials();
+      setTestimonials(data || []);
+
+      // subscribeRealtime -> subscribeTestimonials harus mengembalikan fungsi unsubscribe (sync)
+      unsubscribe = subscribeTestimonials((newTesti) => {
+        setTestimonials((prev) => [newTesti, ...prev]);
+      });
+    } catch (err) {
+      console.error("failed load testimonials", err);
+    }
+  };
+
+  fetchAndSubscribe();
+
+  return () => {
+    if (unsubscribe) unsubscribe();
+  };
+}, []);
+
+// Auto-slide
+useEffect(() => {
+  if (!testimonials || testimonials.length === 0) return;
+  const timer = setInterval(() => {
+    setCurrentIndex((prev) => (prev + 1) % testimonials.length);
+  }, 5000);
+  return () => clearInterval(timer);
+}, [testimonials]);
 
   // --- KONFIGURASI LINK DAN ADMIN ---
   const ADMIN_TELEGRAM = "TradersXauUsd";
@@ -173,6 +212,58 @@ export const LoginScreen: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* TESTIMONIAL SECTION */}
+{testimonials.length > 0 && (
+  <div className="w-full max-w-lg mx-auto mt-10 ...">
+    <h3 className="text-center text-amber-400 text-xl font-bold mb-4">
+      Apa Kata Pengguna
+    </h3>
+
+    <div className="relative h-[180px] flex items-center justify-center">
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={testimonials[currentIndex]?.id ?? currentIndex}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          transition={{ duration: 0.6 }}
+          className="absolute w-full text-center px-4"
+        >
+          <p className="text-gray-200 italic text-lg leading-relaxed">
+            “{(testimonials[currentIndex].text || "").length > 200
+              ? (testimonials[currentIndex].text as string).slice(0, 200) + "..."
+              : testimonials[currentIndex].text}
+            ”
+          </p>
+
+          <div className="flex justify-center items-center mt-4 space-x-2">
+            {[...Array(testimonials[currentIndex].rating || 5)].map((_, idx) => (
+              <svg key={idx} className="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.974a1 1 0 00.95.69h4.178c.969 0 1.372 1.24.588 1.81l-3.384 2.46a1 1 0 00-.364 1.118l1.286 3.974c.3.921-.755 1.688-1.54 1.118l-3.384-2.46a1 1 0 00-1.176 0l-3.384 2.46c-.785.57-1.84-.197-1.54-1.118l1.286-3.974a1 1 0 00-.364-1.118L2.049 9.4c-.784-.57-.38-1.81.588-1.81h4.178a1 1 0 00.95-.69l1.286-3.974z" />
+              </svg>
+            ))}
+          </div>
+
+          <p className="mt-3 text-sm text-gray-400 font-medium">
+            — {testimonials[currentIndex].author || "Member"}
+          </p>
+        </motion.div>
+      </AnimatePresence>
+    </div>
+
+    <div className="flex justify-center mt-6 space-x-2">
+      {testimonials.map((_, i) => (
+        <button
+          key={i}
+          onClick={() => setCurrentIndex(i)}
+          className={`w-2.5 h-2.5 rounded-full transition-all ${i === currentIndex ? "bg-amber-400 w-3.5" : "bg-gray-600"}`}
+          aria-label={`go to testimonial ${i + 1}`}
+        />
+      ))}
+    </div>
+  </div>
+)}
 
       {/* FOOTER */}
       <footer className="mt-8 py-3 text-center text-gray-500 text-sm w-full">
