@@ -26,8 +26,8 @@ useEffect(() => {
       setTestimonials(data || []);
 
       // subscribeRealtime -> subscribeTestimonials harus mengembalikan fungsi unsubscribe (sync)
-      unsubscribe = subscribeTestimonials((newTesti) => {
-        setTestimonials((prev) => [newTesti, ...prev]);
+      unsubscribe = subscribeTestimonials(() => {
+        getTestimonials().then((data) => setTestimonials(data || []));
       });
     } catch (err) {
       console.error("failed load testimonials", err);
