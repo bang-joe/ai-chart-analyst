@@ -1,56 +1,28 @@
-// File: lib/supabase.ts
+// ✅ supabase.ts — versi fix (gunakan anon key agar INSERT ke testimonials berhasil)
+
 import { createClient } from "@supabase/supabase-js";
 
-// 🔧 Aman di browser & server
+// Coba baca env versi Vite dulu (kalau project pakai Vite)
 const supabaseUrl =
-  import.meta.env.VITE_SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-const supabaseAnonKey =
-  import.meta.env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+  import.meta.env.VITE_SUPABASE_URL || process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 
-// 🧩 Error handling agar build Vercel gak blank
+const supabaseAnonKey =
+  import.meta.env.VITE_SUPABASE_ANON_KEY ||
+  process.env.VITE_SUPABASE_ANON_KEY ||
+  process.env.SUPABASE_ANON_KEY;
+
+// Tambahkan sedikit proteksi agar gak blank
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error("❌ Missing Supabase credentials", {
-    supabaseUrl,
-    supabaseAnonKey: supabaseAnonKey ? "present" : "missing",
-  });
-  throw new Error(
-    "Missing Supabase credentials. Please check VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in environment variables."
-  );
+  console.error("❌ Supabase env vars not found. Check your Vercel environment!");
 }
 
-// ✅ Client khusus untuk Testimonial Realtime
-export const supabaseTestimonials = createClient(supabaseUrl, supabaseAnonKey);
+// ✅ Buat koneksi aman menggunakan anon key (frontend-safe)
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: true,
+  },
+});
 
-// --- TESTIMONIAL FUNCTIONS ---
-
-// 🔹 Fetch semua testimoni (urut terbaru)
-export const getTestimonials = async () => {
-  const { data, error } = await supabaseTestimonials
-    .from("testimonials")
-    .select("*")
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    console.error("⚠️ Error fetching testimonials:", error.message);
-    return [];
-  }
-  return data || [];
-};
-
-// 🔹 Subscribe realtime testimoni baru
-export const subscribeTestimonials = (callback: (data: any) => void) => {
-  const channel = supabaseTestimonials
-    .channel("realtime:testimonials")
-    .on(
-      "postgres_changes",
-      { event: "INSERT", schema: "public", table: "testimonials" },
-      (payload) => {
-        callback(payload.new);
-      }
-    )
-    .subscribe();
-
-  return () => {
-    supabaseTestimonials.removeChannel(channel);
-  };
-};
+// Optional: log koneksi sukses
+console.log("✅ Supabase client initialized with anon key");
