@@ -1,5 +1,3 @@
-// ✅ supabase.ts — versi fix full (client + helper untuk testimonial realtime)
-
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl =
@@ -34,7 +32,7 @@ export async function getTestimonials() {
   return data || [];
 }
 
-// ✅ Subscribe realtime (untuk sinkron data testimonial baru)
+// ✅ Subscribe realtime update
 export function subscribeTestimonials(callback: (payload: any) => void) {
   const channel = supabase
     .channel("realtime-testimonials")
@@ -45,11 +43,14 @@ export function subscribeTestimonials(callback: (payload: any) => void) {
     )
     .subscribe();
 
-  return channel;
+  // ✅ kembalikan fungsi unsubscribe (bukan objek)
+  return () => {
+    supabase.removeChannel(channel);
+  };
 }
 
-// ✅ Tambah testimonial (INSERT)
-export async function supabaseTestimonials(newTesti: {
+// ✅ Kirim testimonial baru
+export async function insertTestimonial(newTesti: {
   email: string;
   message: string;
   rating: number;
@@ -57,7 +58,7 @@ export async function supabaseTestimonials(newTesti: {
   const { data, error } = await supabase.from("testimonials").insert([newTesti]);
 
   if (error) {
-    console.error("❌ Error insert testimonial:", error.message);
+    console.error("❌ Gagal kirim testimoni:", error.message);
     throw error;
   }
 

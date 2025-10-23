@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { supabaseTestimonials } from "../lib/supabase";
+import { supabase, insertTestimonial } from "../lib/supabase";
 import { toast } from "react-toastify";
 
 interface Props {
@@ -15,12 +15,13 @@ const TestimonialForm: React.FC<Props> = ({ userEmail }) => {
   // 🔍 Cek apakah user sudah pernah kirim testimoni
   useEffect(() => {
     const checkExisting = async () => {
-      const { data, error } = await supabaseTestimonials
+      const { data, error } = await supabase
         .from("testimonials")
         .select("id")
         .eq("author", userEmail)
         .limit(1);
-      if (error) console.error(error);
+
+      if (error) console.error("Error check existing:", error.message);
       if (data && data.length > 0) setHasTestimonial(true);
     };
     checkExisting();
@@ -32,21 +33,17 @@ const TestimonialForm: React.FC<Props> = ({ userEmail }) => {
 
     try {
       setLoading(true);
-      const { error } = await supabaseTestimonials.from("testimonials").insert([
-        {
-          author: userEmail,
-          text,
-          rating,
-          created_at: new Date().toISOString(),
-        },
-      ]);
-
-      if (error) throw error;
+      await insertTestimonial({
+        email: userEmail,
+        message: text,
+        rating,
+      });
 
       toast.success("✅ Testimoni berhasil dikirim!");
       setText("");
       setHasTestimonial(true);
     } catch (err: any) {
+      console.error("Insert testimonial error:", err);
       toast.error("❌ Gagal kirim testimoni: " + err.message);
     } finally {
       setLoading(false);
