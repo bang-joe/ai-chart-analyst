@@ -1,77 +1,75 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, RealtimeChannel } from "@supabase/supabase-js";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL!;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY!;
+// Inisialisasi Supabase client (pakai anon key)
+export const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL as string,
+  import.meta.env.VITE_SUPABASE_ANON_KEY as string
+);
 
-// ✅ Inisialisasi Supabase client
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-// ✅ Ambil semua testimoni (public bisa baca)
-export async function getTestimonials() {
-  const { data, error } = await supabase
-    .from("testimonials")
-    .select("author, text, rating, created_at")
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    console.error("❌ Gagal ambil testimoni:", error.message);
-    throw error;
-  }
-
-  return data || [];
-}
-
-// ✅ Subscribe realtime ke testimoni baru
-export function subscribeTestimonials(callback: () => void) {
-  const channel = supabase
-    .channel("public:testimonials")
-    .on(
-      "postgres_changes",
-      { event: "INSERT", schema: "public", table: "testimonials" },
-      () => callback()
-    )
-    .subscribe();
-
-  return () => {
-    supabase.removeChannel(channel);
-  };
-}
-
-// ✅ Kirim testimoni baru (validasi: hanya 1 per user)
-export async function insertTestimonial(newTesti: {
+// =======================
+// 💬 1️⃣ Insert Testimonial
+// =======================
+export async function insertTestimonial({
+  email,
+  message,
+  rating,
+}: {
   email: string;
   message: string;
   rating: number;
 }) {
-  // 🧩 Cek apakah user sudah pernah kirim
-  const { data: existing, error: checkError } = await supabase
+  if (!email || !message.trim()) {
+    throw new Error("Email dan pesan wajib diisi");
+  }
+
+  const { data, error } = await supabase
     .from("testimonials")
-    .select("id")
-    .eq("author", newTesti.email)
-    .limit(1);
-
-  if (checkError) {
-    console.error("❌ Gagal cek testimoni lama:", checkError.message);
-    throw checkError;
-  }
-
-  if (existing && existing.length > 0) {
-    throw new Error("Kamu sudah pernah kirim testimoni, Bro 😎");
-  }
-
-  // 🧩 Kalau belum ada, insert baru
-  const { data, error } = await supabase.from("testimonials").insert([
-    {
-      author: newTesti.email, // 🟢 sesuai kolom DB
-      text: newTesti.message, // 🟢 sesuai kolom DB
-      rating: newTesti.rating,
-    },
-  ]);
+    .insert([{ author: email, message, rating }]);
 
   if (error) {
     console.error("❌ Gagal kirim testimoni:", error.message);
-    throw error;
+    throw new Error(error.message);
   }
 
   return data;
+}
+
+// =======================
+// 📖 2️⃣ Get Testimonials (for public display)
+// =======================
+export async function getTestimonials() {
+  const { data, error } = await supabase
+    .from("testimonials")
+    .select("*")
+    .order("id", { ascending: false });
+
+  if (error) {
+    console.error("❌ Gagal mengambil testimoni:", error.message);
+    throw new Error(error.message);
+  }
+
+  return data;
+}
+
+// =======================
+// 🔄 3️⃣ Subscribe Realtime Testimonials (Supabase Realtime)
+// =======================
+export function subscribeTestimonials(
+  callback: (data: Record<string, any>) => void
+): () => void {
+  const channel: RealtimeChannel = supabase
+    .channel("testimonials_changes")
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "testimonials" },
+      (payload) => {
+        callback(payload.new);
+      }
+    )
+    .subscribe();
+
+  // ✅ Return fungsi cleanup agar cocok dengan useEffect React
+  return () => {
+    supabase.removeChannel(channel);
+  };
 }

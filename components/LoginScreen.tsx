@@ -56,7 +56,7 @@ useEffect(() => {
   const TELEGRAM_CHANNEL = "https://t.me/MarketOutlookTradersxauusd";
   const TIKTOK_LINK = "https://www.tiktok.com/@tradersxauusd";
   const ACTIVATION_PURCHASE_LINK =
-    "https://lynk.id/tradersxauusd/e3gl86wpzzw8";
+    "https://tradersxauusd.myr.id/";
 
   // --- HANDLER LOGIN ---
   const handleSubmit = async (e: React.FormEvent) => {
