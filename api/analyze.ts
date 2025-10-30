@@ -7,23 +7,12 @@ export const config = {
 class DeepSeekManager {
   private apiConfigs = [
     {
-      key: process.env.VITE_DEEPSEEK_API_KEY_1,
-      url: 'https://api.maiarouter.ai/v1/chat/completions', // ✅ maiarouter.ai
-      provider: 'maia-router',
-      model: 'deepseek/deepseek-chat'
-    },
-    {
-      key: process.env.VITE_DEEPSEEK_API_KEY_2,
-      url: 'https://api.maiarouter.ai/v1/chat/completions', // ✅ maiarouter.ai
-      provider: 'maia-router', 
-      model: 'deepseek/deepseek-chat'
-    },
-    {
-      key: process.env.VITE_DEEPSEEK_API_KEY_3,
-      url: 'https://api.maiarouter.ai/v1/chat/completions', // ✅ maiarouter.ai
-      provider: 'maia-router',
-      model: 'deepseek/deepseek-chat'
+      key: process.env.VITE_DEEPSEEK_API_KEY_1, // Key DeepSeek native: sk-4f1f5058fce34b5385f8027b81c0d4d6
+      url: 'https://api.deepseek.com/v1/chat/completions', // ✅ DeepSeek langsung
+      provider: 'deepseek-native',
+      model: 'deepseek-chat'
     }
+    // Hapus yang lain, cukup 1 key dulu untuk testing
   ].filter(config => config.key);
 
   private requestCounts = new Map<number, number>();
