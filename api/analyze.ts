@@ -74,25 +74,22 @@ class DeepSeekManager {
     try {
       console.log(`🔧 Using ${config.provider} API (attempt ${attempt})...`);
       
-      const headers: any = {
-        'Authorization': `Bearer ${config.key}`,
-        'Content-Type': 'application/json',
-      };
-
-      // ✅ TAMBAH OpenRouter specific headers
-      if (config.provider === 'openrouter') {
-        headers['HTTP-Referer'] = 'https://www.tradersxauusd.my.id';
-        headers['X-Title'] = 'AI Chart Analyst';
-      }
-      
       const response = await fetch(config.url, {
         method: 'POST',
-        headers: headers,
+        headers: {
+          'Authorization': `Bearer ${config.key}`,
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           model: config.model,
-          messages: [{ role: 'user', content: prompt }],
-          max_tokens: 2000,
-          temperature: 0.7
+          messages: [
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          max_tokens: 2000
+          // Hapus temperature untuk match cURL
         })
       });
 
