@@ -8,19 +8,19 @@ class DeepSeekManager {
   private apiConfigs = [
     {
       key: process.env.VITE_DEEPSEEK_API_KEY_1,
-      url: 'https://api.malarouter.ai/v1/chat/completions', // ✅ MAIA Router
+      url: 'https://api.maiarouter.ai/v1/chat/completions', // ✅ maiarouter.ai
       provider: 'maia-router',
       model: 'deepseek/deepseek-chat'
     },
     {
       key: process.env.VITE_DEEPSEEK_API_KEY_2,
-      url: 'https://api.malarouter.ai/v1/chat/completions', // ✅ MAIA Router
+      url: 'https://api.maiarouter.ai/v1/chat/completions', // ✅ maiarouter.ai
       provider: 'maia-router', 
       model: 'deepseek/deepseek-chat'
     },
     {
       key: process.env.VITE_DEEPSEEK_API_KEY_3,
-      url: 'https://api.malarouter.ai/v1/chat/completions', // ✅ MAIA Router
+      url: 'https://api.maiarouter.ai/v1/chat/completions', // ✅ maiarouter.ai
       provider: 'maia-router',
       model: 'deepseek/deepseek-chat'
     }
