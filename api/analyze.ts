@@ -5,25 +5,37 @@ export const config = {
 
 // DeepSeek API Manager
 class DeepSeekManager {
-  private apiConfigs = [
-    {
-      key: process.env.VITE_DEEPSEEK_API_KEY_1, // Key DeepSeek native: sk-4f1f5058fce34b5385f8027b81c0d4d6
-      url: 'https://api.deepseek.com/v1/chat/completions', // ✅ DeepSeek langsung
-      provider: 'deepseek-native',
-      model: 'deepseek-chat'
-    }
-    // Hapus yang lain, cukup 1 key dulu untuk testing
-  ].filter(config => config.key);
-
-  private requestCounts = new Map<number, number>();
-  private lastResetTime = Date.now();
+  private apiConfigs: Array<{key: string, url: string, provider: string, model: string}>;
+  private requestCounts: Map<number, number>;
+  private lastResetTime: number;
+  private currentKeyIndex: number;
 
   constructor() {
+    this.apiConfigs = [
+      {
+        key: process.env.VITE_DEEPSEEK_API_KEY_2 || '', // Key MAIA
+        url: 'https://api.maiarouter.com/v1/chat/completions',
+        provider: 'maia-router',
+        model: 'deepseek/deepseek-chat'
+      },
+      {
+        key: process.env.VITE_DEEPSEEK_API_KEY_3 || '', // Key MAIA  
+        url: 'https://api.maiarouter.com/v1/chat/completions',
+        provider: 'maia-router',
+        model: 'deepseek/deepseek-chat'
+      }
+    ].filter(config => config.key && config.key.length > 0);
+
+    this.requestCounts = new Map();
+    this.lastResetTime = Date.now();
+    this.currentKeyIndex = 0;
+    
     console.log(`DeepSeek Manager initialized with ${this.apiConfigs.length} API keys`);
     this.apiConfigs.forEach((_, index) => {
       this.requestCounts.set(index, 0);
     });
   }
+
 
   private getCurrentConfig() {
     const now = Date.now();
