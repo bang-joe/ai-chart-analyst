@@ -8,23 +8,23 @@ class DeepSeekManager {
   private apiConfigs = [
     {
       key: process.env.VITE_DEEPSEEK_API_KEY_1,
-      url: 'https://api.deepseek.com/v1/chat/completions',
-      provider: 'deepseek-native',
-      model: 'deepseek-chat'
+      url: 'https://openrouter.ai/api/v1/chat/completions', // ✅ GANTI ke OpenRouter
+      provider: 'openrouter',
+      model: 'deepseek/deepseek-chat' // ✅ GANTI model
     },
     {
       key: process.env.VITE_DEEPSEEK_API_KEY_2,
-      url: 'https://api.malarouter.ai/v1/chat/completions',
-      provider: 'maia-router', 
-      model: 'deepseek/deepseek-chat'
+      url: 'https://openrouter.ai/api/v1/chat/completions', // ✅ GANTI ke OpenRouter
+      provider: 'openrouter', 
+      model: 'deepseek/deepseek-chat' // ✅ GANTI model
     },
     {
       key: process.env.VITE_DEEPSEEK_API_KEY_3,
-      url: 'https://api.malarouter.ai/v1/chat/completions',
-      provider: 'maia-router',
-      model: 'deepseek/deepseek-chat'
+      url: 'https://openrouter.ai/api/v1/chat/completions', // ✅ GANTI ke OpenRouter
+      provider: 'openrouter',
+      model: 'deepseek/deepseek-chat' // ✅ GANTI model
     }
-  ].filter(config => config.key); // Filter out empty keys
+  ].filter(config => config.key);
 
   private requestCounts = new Map<number, number>();
   private lastResetTime = Date.now();
