@@ -63,54 +63,62 @@ class DeepSeekManager {
   }
 
   async callAPI(prompt: string, retries = 3): Promise<string> {
-    if (this.apiConfigs.length === 0) {
-      throw new Error('No DeepSeek API keys configured');
-    }
-
-    for (let attempt = 1; attempt <= retries; attempt++) {
-      const config = this.getCurrentConfig();
-      
-      try {
-        console.log(`🔧 Using ${config.provider} API (attempt ${attempt})...`);
-        
-        const response = await fetch(config.url, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${config.key}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: config.model,
-            messages: [{ role: 'user', content: prompt }],
-            max_tokens: 2000,
-            temperature: 0.7
-          })
-        });
-
-        if (response.status === 429) {
-          console.log(`⏳ Rate limit on ${config.provider}, retrying...`);
-          await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
-          continue;
-        }
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`${config.provider} API error: ${response.status} - ${errorText}`);
-        }
-
-        const data = await response.json();
-        console.log(`✅ Success with ${config.provider}`);
-        return data.choices[0].message.content;
-
-      } catch (error) {
-        console.error(`❌ Attempt ${attempt} failed with ${config.provider}:`, error);
-        if (attempt === retries) throw error;
-        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-      }
-    }
-
-    throw new Error('All API providers exhausted');
+  if (this.apiConfigs.length === 0) {
+    throw new Error('No API keys configured');
   }
+
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    const config = this.getCurrentConfig();
+    
+    try {
+      console.log(`🔧 Using ${config.provider} API (attempt ${attempt})...`);
+      
+      const headers: any = {
+        'Authorization': `Bearer ${config.key}`,
+        'Content-Type': 'application/json',
+      };
+
+      // ✅ TAMBAH OpenRouter specific headers
+      if (config.provider === 'openrouter') {
+        headers['HTTP-Referer'] = 'https://www.tradersxauusd.my.id';
+        headers['X-Title'] = 'AI Chart Analyst';
+      }
+      
+      const response = await fetch(config.url, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify({
+          model: config.model,
+          messages: [{ role: 'user', content: prompt }],
+          max_tokens: 2000,
+          temperature: 0.7
+        })
+      });
+
+      if (response.status === 429) {
+        console.log(`⏳ Rate limit on ${config.provider}, retrying...`);
+        await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+        continue;
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`${config.provider} API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log(`✅ Success with ${config.provider}`);
+      return data.choices[0].message.content;
+
+    } catch (error) {
+      console.error(`❌ Attempt ${attempt} failed with ${config.provider}:`, error);
+      if (attempt === retries) throw error;
+      await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+    }
+  }
+
+  throw new Error('All API providers exhausted');
+}
 }
 
 const deepSeekManager = new DeepSeekManager();
