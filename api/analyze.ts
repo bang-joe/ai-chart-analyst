@@ -13,16 +13,10 @@ class DeepSeekManager {
   constructor() {
     this.apiConfigs = [
       {
-        key: process.env.VITE_DEEPSEEK_API_KEY_2 || '', // Key MAIA
-        url: 'https://api.maiarouter.com/v1/chat/completions',
-        provider: 'maia-router',
-        model: 'deepseek/deepseek-chat'
-      },
-      {
-        key: process.env.VITE_DEEPSEEK_API_KEY_3 || '', // Key MAIA  
-        url: 'https://api.maiarouter.com/v1/chat/completions',
-        provider: 'maia-router',
-        model: 'deepseek/deepseek-chat'
+        key: process.env.VITE_DEEPSEEK_API_KEY_1 || '', // ✅ Tetap pakai env variable
+        url: 'https://openrouter.ai/api/v1/chat/completions',
+        provider: 'openrouter',
+        model: 'deepseek/deepseek-chat-v3-0324'
       }
     ].filter(config => config.key && config.key.length > 0);
 
@@ -30,7 +24,7 @@ class DeepSeekManager {
     this.lastResetTime = Date.now();
     this.currentKeyIndex = 0;
     
-    console.log(`DeepSeek Manager initialized with ${this.apiConfigs.length} API keys`);
+    console.log(`API Manager initialized with ${this.apiConfigs.length} API keys`);
     this.apiConfigs.forEach((_, index) => {
       this.requestCounts.set(index, 0);
     });
