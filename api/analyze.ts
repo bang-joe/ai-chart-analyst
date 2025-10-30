@@ -8,21 +8,21 @@ class DeepSeekManager {
   private apiConfigs = [
     {
       key: process.env.VITE_DEEPSEEK_API_KEY_1,
-      url: 'https://openrouter.ai/api/v1/chat/completions', // ✅ GANTI ke OpenRouter
-      provider: 'openrouter',
-      model: 'deepseek/deepseek-chat' // ✅ GANTI model
+      url: 'https://api.malarouter.ai/v1/chat/completions', // ✅ MAIA Router
+      provider: 'maia-router',
+      model: 'deepseek/deepseek-chat'
     },
     {
       key: process.env.VITE_DEEPSEEK_API_KEY_2,
-      url: 'https://openrouter.ai/api/v1/chat/completions', // ✅ GANTI ke OpenRouter
-      provider: 'openrouter', 
-      model: 'deepseek/deepseek-chat' // ✅ GANTI model
+      url: 'https://api.malarouter.ai/v1/chat/completions', // ✅ MAIA Router
+      provider: 'maia-router', 
+      model: 'deepseek/deepseek-chat'
     },
     {
       key: process.env.VITE_DEEPSEEK_API_KEY_3,
-      url: 'https://openrouter.ai/api/v1/chat/completions', // ✅ GANTI ke OpenRouter
-      provider: 'openrouter',
-      model: 'deepseek/deepseek-chat' // ✅ GANTI model
+      url: 'https://api.malarouter.ai/v1/chat/completions', // ✅ MAIA Router
+      provider: 'maia-router',
+      model: 'deepseek/deepseek-chat'
     }
   ].filter(config => config.key);
 
