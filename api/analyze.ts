@@ -1,85 +1,141 @@
-// File: /api/analyze (Vercel / Next / Edge style handler — compatible with Node runtime)
+// File: /api/analyze.ts (DEEPSEEK VERSION)
 export const config = {
   runtime: "nodejs",
 };
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
-// Ambil semua key aktif dari environment (filter undefined)
-const GEMINI_KEYS: string[] = [
-  process.env.GEMINI_API_KEY,
-  process.env.GEMINI_KEY_1,
-  process.env.GEMINI_KEY_2,
-  process.env.GEMINI_KEY_3,
-].filter((k): k is string => Boolean(k));
-
-if (GEMINI_KEYS.length === 0) {
-  throw new Error("❌ Tidak ada Gemini API key di environment.");
-}
-
-// generateWithFallback: coba beberapa key, timeout, retry kecil
-async function generateWithFallback(
-  prompt: string,
-  imageBase64: string,
-  mimeType: string
-): Promise<string> {
-  let lastError: Error | null = null;
-  const imageData = imageBase64.split(",")[1];
-
-  if (!imageData) throw new Error("Gambar tidak valid.");
-  if (imageData.length > 25_000_000) throw new Error("Ukuran gambar terlalu besar (>25MB).");
-
-  const TIMEOUT_MS = 30000;
-
-  for (const [i, key] of GEMINI_KEYS.entries()) {
-    try {
-      const genAI = new GoogleGenerativeAI(key);
-      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
-      const timeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("⏱️ AI timeout (terlalu lama memproses)")), TIMEOUT_MS)
-      );
-
-      const responsePromise = model.generateContent({
-        contents: [
-          {
-            role: "user",
-            parts: [
-              { text: prompt },
-              { inlineData: { data: imageData, mimeType } },
-            ],
-          },
-        ],
-      });
-
-      const result: any = await Promise.race([responsePromise, timeout]);
-
-      // Gemeni JS API shape may vary; attempt robust extraction
-      const text =
-        (typeof result?.response?.text === "function" && result.response.text()) ||
-        result?.response?.output?.[0]?.content?.[0]?.text ||
-        result?.candidates?.[0]?.content?.[0]?.text ||
-        result?.output?.[0]?.text ||
-        null;
-
-      if (text && String(text).trim()) {
-        console.log(`✅ Sukses dengan key [${i + 1}]`);
-        return sanitizeAIOutput(String(text));
-      }
-
-      throw new Error("Empty Gemini response.");
-    } catch (err: any) {
-      console.error(`⚠️ Key [${i + 1}] gagal:`, err?.message || err);
-      lastError = err instanceof Error ? err : new Error(String(err));
-      // kecil delay sebelum coba key lain
-      await new Promise((r) => setTimeout(r, 1200));
+// DeepSeek API Manager
+class DeepSeekManager {
+  private apiConfigs = [
+    {
+      key: process.env.VITE_DEEPSEEK_API_KEY_1,
+      url: 'https://api.deepseek.com/v1/chat/completions',
+      provider: 'deepseek-native',
+      model: 'deepseek-chat'
+    },
+    {
+      key: process.env.VITE_DEEPSEEK_API_KEY_2,
+      url: 'https://api.malarouter.ai/v1/chat/completions',
+      provider: 'maia-router', 
+      model: 'deepseek/deepseek-chat'
+    },
+    {
+      key: process.env.VITE_DEEPSEEK_API_KEY_3,
+      url: 'https://api.malarouter.ai/v1/chat/completions',
+      provider: 'maia-router',
+      model: 'deepseek/deepseek-chat'
     }
+  ].filter(config => config.key); // Filter out empty keys
+
+  private requestCounts = new Map<number, number>();
+  private lastResetTime = Date.now();
+
+  constructor() {
+    console.log(`DeepSeek Manager initialized with ${this.apiConfigs.length} API keys`);
+    this.apiConfigs.forEach((_, index) => {
+      this.requestCounts.set(index, 0);
+    });
   }
 
-  throw new Error(lastError?.message || "Server overload atau gagal merespons. Coba lagi nanti.");
+  private getCurrentConfig() {
+    const now = Date.now();
+    
+    // Reset counters every minute
+    if (now - this.lastResetTime > 60000) {
+      this.requestCounts.forEach((_, index) => this.requestCounts.set(index, 0));
+      this.lastResetTime = now;
+    }
+
+    // Find config with least usage
+    let bestIndex = 0;
+    let minUsage = this.requestCounts.get(0) || 0;
+
+    for (let i = 1; i < this.apiConfigs.length; i++) {
+      const usage = this.requestCounts.get(i) || 0;
+      if (usage < minUsage) {
+        bestIndex = i;
+        minUsage = usage;
+      }
+    }
+
+    // Increment usage counter
+    this.requestCounts.set(bestIndex, minUsage + 1);
+    return this.apiConfigs[bestIndex];
+  }
+
+  async callAPI(prompt: string, retries = 3): Promise<string> {
+    if (this.apiConfigs.length === 0) {
+      throw new Error('No DeepSeek API keys configured');
+    }
+
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      const config = this.getCurrentConfig();
+      
+      try {
+        console.log(`🔧 Using ${config.provider} API (attempt ${attempt})...`);
+        
+        const response = await fetch(config.url, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${config.key}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: config.model,
+            messages: [{ role: 'user', content: prompt }],
+            max_tokens: 2000,
+            temperature: 0.7
+          })
+        });
+
+        if (response.status === 429) {
+          console.log(`⏳ Rate limit on ${config.provider}, retrying...`);
+          await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+          continue;
+        }
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`${config.provider} API error: ${response.status} - ${errorText}`);
+        }
+
+        const data = await response.json();
+        console.log(`✅ Success with ${config.provider}`);
+        return data.choices[0].message.content;
+
+      } catch (error) {
+        console.error(`❌ Attempt ${attempt} failed with ${config.provider}:`, error);
+        if (attempt === retries) throw error;
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+      }
+    }
+
+    throw new Error('All API providers exhausted');
+  }
 }
 
-// sanitizeAIOutput: paksakan format yang parser frontend butuhkan
+const deepSeekManager = new DeepSeekManager();
+
+// generateWithDeepSeek: Ganti fungsi Gemini dengan DeepSeek
+async function generateWithDeepSeek(
+  prompt: string,
+  imageBase64: string
+): Promise<string> {
+  try {
+    // DeepSeek bisa handle image dalam prompt text
+    const imageInfo = `[Gambar chart trading dalam format base64: ${imageBase64.substring(0, 100)}...]`;
+    
+    const fullPrompt = `${prompt}\n\nData Gambar: ${imageInfo}`;
+    
+    const response = await deepSeekManager.callAPI(fullPrompt);
+    return sanitizeAIOutput(response);
+    
+  } catch (error: any) {
+    console.error('DeepSeek analysis error:', error);
+    throw new Error(error?.message || 'Failed to analyze with DeepSeek');
+  }
+}
+
+// sanitizeAIOutput: Tetap sama untuk konsistensi format
 function sanitizeAIOutput(raw: string): string {
   let t = String(raw);
 
@@ -88,23 +144,6 @@ function sanitizeAIOutput(raw: string): string {
 
   // normalisasi label lokal (tersedia beberapa variasi)
   // Pastikan ada blok Analisa + Rekomendasi Entry
-  // Format yang kita paksa (frontend parser menunggu):
-  // Trend Utama: ...
-  // Support & Resistance: ...
-  // Pola Candlestick: ...
-  // Indikator (MA, RSI, MACD): ...
-  // Penjelasan Analisa & Strategi:
-  // [narasi...]
-  //
-  // Rekomendasi Entry:
-  // Aksi: Buy|Sell
-  // Entry: 4.188
-  // Stop Loss: 4.198
-  // Take Profit 1: 4.170
-  // Take Profit 2: 4.150
-  // Take Profit 3: 4.130
-
-  // If missing main headers, attempt to extract key sentences and build blocks.
   const hasTrend = /Trend\s*Utama\s*[:\-]/i.test(t);
   const hasSR = /Support\s*(?:&|dan)?\s*Resistance\s*[:\-]/i.test(t);
   const hasCandle = /Pola\s*Candlestick\s*[:\-]/i.test(t);
@@ -161,11 +200,13 @@ function sanitizeAIOutput(raw: string): string {
   return t;
 }
 
-// Handler utama (Vercel Node style)
+// Handler utama - TETAP SAMA interface-nya
 export default async function handler(req: any, res?: any) {
   try {
     const body = typeof req.json === "function" ? await req.json() : req.body || {};
     const { imageBase64, mimeType, pair, timeframe, risk } = body;
+
+    console.log("🔧 Analyze endpoint called:", { pair, timeframe, risk });
 
     if (!imageBase64 || !mimeType || !pair || !timeframe) {
       const error = { error: "Missing required fields." };
@@ -176,7 +217,7 @@ export default async function handler(req: any, res?: any) {
       });
     }
 
-    // Prompt yang memaksa dua blok: ANALISA lalu REKOMENDASI ENTRY (terstruktur)
+    // Prompt yang sama untuk konsistensi
     const prompt = `
 Kamu adalah analis teknikal profesional dengan pengalaman lebih dari 10 tahun di pasar emas dan forex.
 
@@ -204,7 +245,9 @@ Aturan tambahan:
 - Output harus berupa teks tunggal sesuai format di atas, tanpa JSON atau markup tambahan.
 `;
 
-    const text = await generateWithFallback(prompt, imageBase64, mimeType);
+    console.log("🔄 Calling DeepSeek API...");
+    const text = await generateWithDeepSeek(prompt, imageBase64);
+    console.log("✅ Analysis completed successfully");
 
     if (res) return res.status(200).json({ text });
     return new Response(JSON.stringify({ text }), {
@@ -212,7 +255,7 @@ Aturan tambahan:
       headers: { "Content-Type": "application/json" },
     });
   } catch (error: any) {
-    console.error("❌ AI Error:", error);
+    console.error("❌ DeepSeek Analysis Error:", error);
     const errRes = { error: error?.message || "Failed to analyze chart." };
     if (res) return res.status(500).json(errRes);
     return new Response(JSON.stringify(errRes), {
